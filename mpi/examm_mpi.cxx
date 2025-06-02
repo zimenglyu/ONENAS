@@ -18,7 +18,7 @@ using std::vector;
 
 #include "common/log.hxx"
 #include "common/process_arguments.hxx"
-#include "examm/examm.hxx"
+#include "onenas/examm.hxx"
 #include "mpi.h"
 #include "rnn/generate_nn.hxx"
 #include "time_series/time_series.hxx"

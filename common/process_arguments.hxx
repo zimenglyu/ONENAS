@@ -12,11 +12,11 @@ using std::vector;
 
 #include "common/arguments.hxx"
 #include "common/log.hxx"
-#include "examm/examm.hxx"
+#include "onenas/examm.hxx"
 #include "onenas/onenas.hxx"
 #include "onenas/onenas_island_speciation_strategy.hxx"
-#include "examm/island_speciation_strategy.hxx"
-#include "examm/neat_speciation_strategy.hxx"
+#include "onenas/island_speciation_strategy.hxx"
+#include "onenas/neat_speciation_strategy.hxx"
 #include "rnn/rnn_genome.hxx"
 #include "time_series/time_series.hxx"
 

@@ -15,10 +15,10 @@ if (MPI_FOUND)
     # target_link_libraries(test_stream_write examm_strategy exact_time_series  exact_common exact_weights examm_nn ${MPI_LIBRARIES} ${MPI_EXTRA} ${MYSQL_LIBRARIES} ${TIFF_LIBRARIES} pthread)
 
     add_executable(examm_mpi examm_mpi.cxx)
-    target_link_libraries(examm_mpi examm_strategy onenas_strategy exact_time_series  exact_common exact_weights examm_nn ${MPI_LIBRARIES} ${MPI_EXTRA} ${MYSQL_LIBRARIES} ${TIFF_LIBRARIES} pthread)
+    target_link_libraries(examm_mpi examm_strategy onenas_strategy exact_time_series online_series exact_common exact_weights examm_nn ${MPI_LIBRARIES} ${MPI_EXTRA} ${MYSQL_LIBRARIES} ${TIFF_LIBRARIES} pthread)
 
     add_executable(onanas_mpi onanas_mpi.cxx)
-    target_link_libraries(onanas_mpi onenas_strategy exact_time_series online_series exact_common exact_weights examm_nn ${MPI_LIBRARIES} ${MPI_EXTRA} ${MYSQL_LIBRARIES} ${TIFF_LIBRARIES} pthread)
+    target_link_libraries(onanas_mpi examm_strategy onenas_strategy exact_time_series online_series exact_common exact_weights examm_nn ${MPI_LIBRARIES} ${MPI_EXTRA} ${MYSQL_LIBRARIES} ${TIFF_LIBRARIES} pthread)
 
     # add_executable(examm_mpi_multi examm_mpi_multi.cxx)
     # target_link_libraries(examm_mpi_multi examm_strategy exact_time_series  exact_common exact_weights examm_nn ${MPI_LIBRARIES} ${MPI_EXTRA} ${MYSQL_LIBRARIES} ${TIFF_LIBRARIES} pthread)
