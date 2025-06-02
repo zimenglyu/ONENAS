@@ -403,3 +403,130 @@ void Log::trace_no_header(const char* format, ...) {
     va_start(arguments, format);
     write_message(false, TRACE, "TRACE", format, arguments);
 }
+
+void Log::divider() {
+    divider(INFO, DIVIDER_MAJOR, nullptr);
+}
+
+bool Log::divider(int8_t level, int8_t divider_type, const char* message) {
+    // don't write if this is the wrong process rank
+    if (restricted_rank >= 0 && restricted_rank != process_rank) {
+        return false;
+    }
+
+    // not writing this type of message to either std out or a file
+    if (std_message_level < level && file_message_level < level) {
+        return false;
+    }
+
+    const char* divider_chars;
+    int divider_length;
+    
+    switch (divider_type) {
+        case DIVIDER_MAJOR:
+            divider_chars = "=";
+            divider_length = 80;
+            break;
+        case DIVIDER_MINOR:
+            divider_chars = "-";
+            divider_length = 60;
+            break;
+        case DIVIDER_SUBTLE:
+            divider_chars = ".";
+            divider_length = 40;
+            break;
+        default:
+            divider_chars = "=";
+            divider_length = 80;
+            break;
+    }
+    
+    if (message != nullptr && strlen(message) > 0) {
+        // Calculate padding for centered message
+        int message_len = strlen(message);
+        int total_padding = divider_length - message_len - 2; // -2 for spaces around message
+        int left_padding = total_padding / 2;
+        int right_padding = total_padding - left_padding;
+        
+        if (left_padding < 0) left_padding = 0;
+        if (right_padding < 0) right_padding = 0;
+        
+        // Print divider with centered message
+        string divider_line = "";
+        for (int i = 0; i < left_padding; i++) {
+            divider_line += divider_chars;
+        }
+        divider_line += " " + string(message) + " ";
+        for (int i = 0; i < right_padding; i++) {
+            divider_line += divider_chars;
+        }
+        divider_line += "\n";
+        
+        // Use the appropriate logging function based on level
+        switch (level) {
+            case FATAL:
+                fatal_no_header("%s", divider_line.c_str());
+                break;
+            case ERROR:
+                error_no_header("%s", divider_line.c_str());
+                break;
+            case WARNING:
+                warning_no_header("%s", divider_line.c_str());
+                break;
+            case INFO:
+                info_no_header("%s", divider_line.c_str());
+                break;
+            case DEBUG:
+                debug_no_header("%s", divider_line.c_str());
+                break;
+            case TRACE:
+                trace_no_header("%s", divider_line.c_str());
+                break;
+            default:
+                info_no_header("%s", divider_line.c_str());
+                break;
+        }
+    } else {
+        // Print simple divider line
+        string divider_line = "";
+        for (int i = 0; i < divider_length; i++) {
+            divider_line += divider_chars;
+        }
+        divider_line += "\n";
+        
+        // Use the appropriate logging function based on level
+        switch (level) {
+            case FATAL:
+                fatal_no_header("%s", divider_line.c_str());
+                break;
+            case ERROR:
+                error_no_header("%s", divider_line.c_str());
+                break;
+            case WARNING:
+                warning_no_header("%s", divider_line.c_str());
+                break;
+            case INFO:
+                info_no_header("%s", divider_line.c_str());
+                break;
+            case DEBUG:
+                debug_no_header("%s", divider_line.c_str());
+                break;
+            case TRACE:
+                trace_no_header("%s", divider_line.c_str());
+                break;
+            default:
+                info_no_header("%s", divider_line.c_str());
+                break;
+        }
+    }
+    
+    return true;
+}
+
+void Log::major_divider(int8_t level, const char* message) {
+    divider(level, DIVIDER_MAJOR, message);
+}
+
+void Log::minor_divider(int8_t level) {
+    divider(level, DIVIDER_MINOR, nullptr);
+}

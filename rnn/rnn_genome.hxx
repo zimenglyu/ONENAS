@@ -31,6 +31,8 @@ using std::vector;
 
 // mysql can't handle the max float value for some reason
 #define EXAMM_MAX_DOUBLE 10000000
+#define GENERATED 10
+#define ELITE 11
 
 extern vector<int32_t> dnas_node_types;
 
@@ -40,6 +42,8 @@ class RNN_Genome {
    private:
     int32_t generation_id;
     int32_t group_id;
+
+    int32_t genome_type;
 
     int32_t bp_iterations;
 
@@ -145,6 +149,8 @@ class RNN_Genome {
 
     int32_t get_group_id() const;
     void set_group_id(int32_t _group_id);
+    void set_genome_type(int32_t type);
+    int32_t get_genome_type();
 
     void set_bp_iterations(int32_t _bp_iterations);
     int32_t get_bp_iterations();
@@ -222,10 +228,13 @@ class RNN_Genome {
         const vector<vector<vector<double> > >& outputs
     );
 
-    vector<vector<double> > get_predictions(
-        const vector<double>& parameters, const vector<vector<vector<double> > >& inputs,
-        const vector<vector<vector<double> > >& outputs
-    );
+    // vector<vector<double> > get_predictions(
+    //     const vector<double>& parameters, const vector<vector<vector<double> > >& inputs,
+    //     const vector<vector<vector<double> > >& outputs
+    // );
+
+    vector< vector< vector<double> > > get_predictions(const vector<double> &parameters, const vector< vector< vector<double> > > &inputs, const vector< vector< vector<double> > > &outputs);
+
     void write_predictions(
         string output_directory, const vector<string>& input_filenames, const vector<double>& parameters,
         const vector<vector<vector<double> > >& inputs, const vector<vector<vector<double> > >& outputs,
@@ -314,6 +323,9 @@ class RNN_Genome {
     void write_to_file(string bin_filename);
     void write_to_stream(ostream& bin_stream);
 
+    void evaluate_online(const vector< vector< vector<double> > > &inputs, const vector< vector< vector<double> > > &output);
+
+
     bool connect_new_input_node(
         double mu, double sig, RNN_Node_Interface* new_node, uniform_int_distribution<int32_t> dist,
         int32_t& edge_innovation_count, bool not_all_hidden
@@ -359,6 +371,8 @@ class RNN_Genome {
     );
 
     friend class EXAMM;
+    friend class ONENAS;
+    friend class OneNasIslandSpeciationStrategy;
     friend class IslandSpeciationStrategy;
     friend class NeatSpeciationStrategy;
     friend class RecDepthFrequencyTable;
@@ -373,5 +387,7 @@ struct sort_genomes_by_fitness {
 
 void write_binary_string(ostream& out, string s, string name);
 void read_binary_string(istream& in, string& s, string name);
+
+
 
 #endif

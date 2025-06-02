@@ -126,6 +126,11 @@ class Log {
     static const int8_t TRACE = 6;   /**< Specifies trace and above messages will be logged. */
     static const int8_t ALL = 7;     /**< Specifies all messages will be logged. */
 
+    // Divider types for different visual separators
+    static const int8_t DIVIDER_MAJOR = 1;   /**< Major divider with heavy visual separation. */
+    static const int8_t DIVIDER_MINOR = 2;   /**< Minor divider with medium visual separation. */
+    static const int8_t DIVIDER_SUBTLE = 3;  /**< Subtle divider with light visual separation. */
+
     /**
      * Registers used command line arguments and instructions with the CommandLine class.
      * Needs to be called at the beginning of the main method of any programming using the Log class. Will register the
@@ -235,6 +240,36 @@ class Log {
         const char* format, ...
     ); /**< Logs a trace message. Does not print the message header (useful if doing
           multiple log prints to the same line).  varargs are the same as in printf. */
+
+    /**
+     * Prints a divider line at INFO level with major styling.
+     */
+    static void divider();
+    
+    /**
+     * Prints a divider line with specified level, type, and optional message.
+     * 
+     * \param level the message level for the divider
+     * \param divider_type the type of divider (DIVIDER_MAJOR, DIVIDER_MINOR, DIVIDER_SUBTLE)
+     * \param message optional message to include in the divider
+     * \return true if the divider was actually printed (based on log levels)
+     */
+    static bool divider(int8_t level, int8_t divider_type, const char* message = nullptr);
+    
+    /**
+     * Prints a major divider with specified level and message.
+     * 
+     * \param level the message level for the divider
+     * \param message the message to include in the divider
+     */
+    static void major_divider(int8_t level, const char* message);
+    
+    /**
+     * Prints a minor divider with specified level.
+     * 
+     * \param level the message level for the divider
+     */
+    static void minor_divider(int8_t level);
 };
 
 #endif

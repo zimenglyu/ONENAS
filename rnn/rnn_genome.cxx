@@ -174,6 +174,7 @@ RNN_Genome* RNN_Genome::copy() {
     other->group_id = group_id;
     other->bp_iterations = bp_iterations;
     other->generation_id = generation_id;
+    other->genome_type = genome_type;
     // other->learning_rate = learning_rate;
     // other->adapt_learning_rate = adapt_learning_rate;
     // other->use_reset_weights = use_reset_weights;
@@ -345,6 +346,7 @@ int32_t RNN_Genome::get_node_count(int32_t node_type) {
 
     return count;
 }
+
 
 void RNN_Genome::clear_generated_by() {
     generated_by_map.clear();
@@ -1293,17 +1295,34 @@ double RNN_Genome::get_mae(
     return avg_mae;
 }
 
-vector<vector<double> > RNN_Genome::get_predictions(
-    const vector<double>& parameters, const vector<vector<vector<double> > >& inputs,
-    const vector<vector<vector<double> > >& outputs
-) {
-    RNN* rnn = get_rnn();
-    rnn->set_weights(parameters);
+// vector<vector<double> > RNN_Genome::get_predictions(
+//     const vector<double>& parameters, const vector<vector<vector<double> > >& inputs,
+//     const vector<vector<vector<double> > >& outputs
+// ) {
+//     RNN* rnn = get_rnn();
+//     rnn->set_weights(parameters);
 
-    vector<vector<double> > all_results;
+//     vector<vector<double> > all_results;
 
-    // one input vector per testing file
-    for (int32_t i = 0; i < (int32_t) inputs.size(); i++) {
+//     // one input vector per testing file
+//     for (int32_t i = 0; i < (int32_t) inputs.size(); i++) {ß
+//         all_results.push_back(rnn->get_predictions(inputs[i], outputs[i], use_dropout, dropout_probability));
+//     }
+
+//     delete rnn;
+
+//     return all_results;
+// }
+
+vector< vector< vector<double> > > RNN_Genome::get_predictions(const vector<double> &parameters, const vector< vector< vector<double> > > &inputs, const vector< vector< vector<double> > > &outputs) {
+    RNN *rnn = get_rnn();
+    if (parameters.size() == 0) rnn->set_weights(initial_parameters);
+    else rnn->set_weights(parameters);
+
+    vector< vector< vector<double> > > all_results;
+
+    //one input vector per testing file
+    for (int32_t i = 0; i < (int32_t)inputs.size(); i++) {
         all_results.push_back(rnn->get_predictions(inputs[i], outputs[i], use_dropout, dropout_probability));
     }
 
@@ -1370,6 +1389,24 @@ void RNN_Genome::write_predictions(
 
 //     delete rnn;
 // }
+
+void RNN_Genome::evaluate_online(const vector< vector< vector<double> > > &inputs, const vector< vector< vector<double> > > &output) {
+
+    if (best_parameters.size() > 0) {
+        best_validation_mse = get_mse(best_parameters, inputs, output);
+    } else {
+        // Log::error("initial parameter size %d\n", initial_parameters.size());
+        best_validation_mse = get_mse(initial_parameters, inputs, output);
+    }   
+}
+
+void RNN_Genome::set_genome_type(int32_t type) {
+    genome_type = type;
+}
+
+int32_t RNN_Genome::get_genome_type() {
+    return genome_type;
+}
 
 bool RNN_Genome::has_node_with_innovation(int32_t innovation_number) const {
     for (int32_t i = 0; i < (int32_t) nodes.size(); i++) {
@@ -3349,6 +3386,7 @@ void RNN_Genome::read_from_stream(istream& bin_istream) {
     bin_istream.read((char*) &generation_id, sizeof(int32_t));
     bin_istream.read((char*) &group_id, sizeof(int32_t));
     bin_istream.read((char*) &bp_iterations, sizeof(int32_t));
+    bin_istream.read((char*) &genome_type, sizeof(int32_t));
 
     bin_istream.read((char*) &use_dropout, sizeof(bool));
     bin_istream.read((char*) &dropout_probability, sizeof(double));
@@ -3550,6 +3588,7 @@ void RNN_Genome::write_to_stream(ostream& bin_ostream) {
     bin_ostream.write((char*) &generation_id, sizeof(int32_t));
     bin_ostream.write((char*) &group_id, sizeof(int32_t));
     bin_ostream.write((char*) &bp_iterations, sizeof(int32_t));
+    bin_ostream.write((char*) &genome_type, sizeof(int32_t));
 
     bin_ostream.write((char*) &use_dropout, sizeof(bool));
     bin_ostream.write((char*) &dropout_probability, sizeof(double));

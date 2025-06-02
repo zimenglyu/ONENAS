@@ -11,26 +11,24 @@ SET (PLATFORM 64)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-#SET (CMAKE_CXX_FLAGS                "-std=c++11 -Wall -O3 -funroll-loops -msse3 -stdlib=libstdc++")
-#SET (CMAKE_CXX_FLAGS                "-std=c++11 -Wall -O3 -funroll-loops -msse3 -fsanitize=address -DNAN_CHECKS")
-#SET (CMAKE_CXX_FLAGS                "-std=c++11 -g -Wall -O1 -funroll-loops -msse3 -fsanitize=address -fno-omit-frame-pointer -DNAN_CHECKS")
-#SET (CMAKE_CXX_FLAGS                "-std=c++11 -g -Wall -O1 -funroll-loops -msse3 -fsanitize=address -fno-omit-frame-pointer -DNAN_CHECKS -D_GLIBCXX_DEBUG")
-#SET (CMAKE_CXX_FLAGS                "-std=c++11 -Wall -O3 -funroll-loops -msse3 -D_GLIBCXX_DEBUG")
-#SET (CMAKE_CXX_FLAGS                "-std=c++11 -Wall -O3 -funroll-loops -msse3 -DNAN_CHECKS")
+# Platform-specific compiler flags
+if(APPLE)
+    # macOS specific flags
+    SET (CMAKE_CXX_FLAGS "-Wall -O3 -funroll-loops")
+    # Remove -msse3 on Apple Silicon Macs as it's not supported
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+        SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse3")
+    endif()
+else()
+    # Linux/other platforms
+    SET (CMAKE_CXX_FLAGS "-Wall -O3 -funroll-loops -msse3")
+endif()
 
-# 1 This line for local
-#SET (CMAKE_CXX_FLAGS                "-Wall -O3 -funroll-loops  -msse3 -fsanitize=address -fno-omit-frame-pointer -D_GLIBCXX_DEBUG")
-#SET (CMAKE_CXX_FLAGS                "-std=gnu++17 -Wall -O3 -funroll-loops  -msse3 -fsanitize=address -fno-omit-frame-pointer -D_GLIBCXX_DEBUG")
-#SET (CMAKE_CXX_FLAGS                "-std=c++20 -Wall -O3 -funroll-loops  -msse3 -fsanitize=address -fno-omit-frame-pointer -D_GLIBCXX_DEBUG")
-
-# 2 This line for cluster
-#SET (CMAKE_CXX_FLAGS                "-std=gnu++17 -Wall -O3 -funroll-loops  -msse3 -fno-omit-frame-pointer -D_GLIBCXX_DEBUG")
-
-SET (CMAKE_CXX_FLAGS                " -Wall -O3 -funroll-loops -msse3")
+# SET (CMAKE_CXX_FLAGS                " -Wall -O3 -funroll-loops -msse3")
 #SET (CMAKE_CXX_FLAGS                " -Wall -O1 -funroll-loops -msse3 -g -fsanitize=address -fno-omit-frame-pointer -shared-libasan -DGLIBCXX_DEBUG")
 #SET (CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS} -g")
 #SET (CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS} -Os -DNDEBUG")
-SET (CMAKE_CXX_FLAGS_RELEASE        "${CMAKE_CXX_FLAGS} -O4 -funroll-loops -DNDEBUG")
+# SET (CMAKE_CXX_FLAGS_RELEASE        "${CMAKE_CXX_FLAGS} -O4 -funroll-loops -DNDEBUG")
 
 #SET (CMAKE_SHARED_LINKER_FLAGS      " -Wall -O1 -funroll-loops -msse3 -g -fsanitize=address -fno-omit-frame-pointer -shared-libasan -DGLIBCXX_DEBUG")
 
@@ -115,11 +113,11 @@ add_subdirectory(rnn_examples)
 # add_subdirectory(opencl)
 
 add_subdirectory(weights)
-add_subdirectory(examm)
+add_subdirectory(onenas)
 
 # add_subdirectory(cnn_tests)
 # add_subdirectory(cnn_examples)
-add_subdirectory(multithreaded)
+# add_subdirectory(multithreaded)
 add_subdirectory(mpi)
 
 # add_subdirectory(exona)

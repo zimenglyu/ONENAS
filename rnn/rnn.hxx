@@ -64,10 +64,13 @@ class RNN {
         bool training, double dropout_probability
     );
 
-    vector<double> get_predictions(
-        const vector<vector<double> >& series_data, const vector<vector<double> >& expected_outputs, bool usng_dropout,
-        double dropout_probability
-    );
+    // vector<double> get_predictions(
+    //     const vector<vector<double> >& series_data, const vector<vector<double> >& expected_outputs, bool usng_dropout,
+    //     double dropout_probability
+    // );
+
+    vector<vector<double>> get_predictions(const vector< vector<double> > &series_data, const vector< vector<double> > &expected_outputs, bool using_dropout, double dropout_probability);
+
 
     void write_predictions(
         string output_filename, const vector<string>& input_parameter_names,

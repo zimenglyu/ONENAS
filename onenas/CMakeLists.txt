@@ -1,0 +1,2 @@
+add_library(examm_strategy examm.cxx  species.cxx island.cxx island_speciation_strategy.cxx species.cxx neat_speciation_strategy.cxx)
+add_library(onenas_strategy onenas.cxx onenas_island.cxx onenas_island_speciation_strategy.cxx population.cxx)

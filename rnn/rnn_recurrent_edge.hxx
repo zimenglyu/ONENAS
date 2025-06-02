@@ -72,6 +72,7 @@ class RNN_Recurrent_Edge {
     friend class RNN_Genome;
     friend class RNN;
     friend class EXAMM;
+    friend class ONENAS;
     friend class RecDepthFrequencyTable;
 };
 

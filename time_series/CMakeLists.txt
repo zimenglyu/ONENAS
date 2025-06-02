@@ -1,4 +1,5 @@
-add_library(exact_time_series time_series.cxx)
+add_library(exact_time_series time_series.cxx online_series.cxx)
+add_library(online_series online_series.cxx)
 
 add_executable(normalize_data normalize_data.cxx)
 target_link_libraries(normalize_data exact_time_series exact_common)

@@ -66,6 +66,46 @@ EXAMM* generate_examm_from_arguments(
     return examm;
 }
 
+ONENAS* generate_onenas_from_arguments(
+    const vector<string>& arguments, TimeSeriesSets* time_series_sets, WeightRules* weight_rules,
+    RNN_Genome* seed_genome
+) {
+    Log::info("Getting arguments for ONENAS\n");
+
+    int32_t number_islands;
+    get_argument(arguments, "--number_islands", true, number_islands);
+    // int32_t max_genomes;
+    // get_argument(arguments, "--max_genomes", true, max_genomes);
+    string output_directory = "";
+    get_argument(arguments, "--output_directory", false, output_directory);
+    vector<string> possible_node_types;
+    get_argument_vector(arguments, "--possible_node_types", false, possible_node_types);
+    string save_genome_option = "all_best_genomes";
+    get_argument(arguments, "--save_genome_option", false, save_genome_option);
+
+
+    // random_sequence_length = argument_exists(arguments, "--random_sequence_length");
+    // get_argument(arguments, "--sequence_length_lower_bound", false, sequence_length_lower_bound);
+    // get_argument(arguments, "--sequence_length_upper_bound", false, sequence_length_upper_bound);
+
+    GenomeProperty* genome_property = new GenomeProperty();
+    genome_property->generate_genome_property_from_arguments(arguments);
+    genome_property->get_time_series_parameters(time_series_sets);
+
+    SpeciationStrategy* speciation_strategy = generate_speciation_strategy_from_arguments(arguments, seed_genome);
+
+    ONENAS* onenas = new ONENAS(
+        number_islands, speciation_strategy, weight_rules, genome_property, output_directory,
+        save_genome_option
+    );
+    if (possible_node_types.size() > 0) {
+        onenas->set_possible_node_types(possible_node_types);
+    }
+
+    return onenas;
+}
+
+
 SpeciationStrategy* generate_speciation_strategy_from_arguments(
     const vector<string>& arguments, RNN_Genome* seed_genome
 ) {
@@ -79,11 +119,57 @@ SpeciationStrategy* generate_speciation_strategy_from_arguments(
     } else if (is_neat_strategy(speciation_method)) {
         Log::info("Using Neat speciation strategy\n");
         speciation_strategy = generate_neat_speciation_strategy_from_arguments(arguments, seed_genome);
+    } else if (is_onenas_strategy(speciation_method)) {
+        Log::info("Using ONENAS speciation strategy\n");
+        speciation_strategy = generate_onenas_island_speciation_strategy_from_arguments(arguments, seed_genome);
     } else {
         Log::fatal("Wrong speciation strategy method %s\n", speciation_method.c_str());
         exit(1);
     }
     return speciation_strategy;
+}
+
+OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_arguments(
+    const vector<string>& arguments, RNN_Genome* seed_genome
+) {
+    Log::info("Getting arguments for ONENAS Island speciation strategy\n");
+    int32_t generated_population_size;
+    get_argument(arguments, "--generated_population_size", true, generated_population_size);
+    int32_t elite_population_size;
+    get_argument(arguments, "--elite_population_size", true, elite_population_size);
+    int32_t number_islands;
+    get_argument(arguments, "--number_islands", true, number_islands);
+    int32_t extinction_event_generation_number = 0;
+    get_argument(arguments, "--extinction_event_generation_number", false, extinction_event_generation_number);
+    int32_t islands_to_exterminate = 0;
+    get_argument(arguments, "--islands_to_exterminate", false, islands_to_exterminate);
+    string island_ranking_method = "";
+    get_argument(arguments, "--island_ranking_method", false, island_ranking_method);
+    string repopulation_method = "";
+    get_argument(arguments, "--repopulation_method", false, repopulation_method);
+    int32_t num_mutations = 1;
+    get_argument(arguments, "--num_mutations", false, num_mutations);
+
+    double mutation_rate = 0.70, intra_island_co_rate = 0.20, inter_island_co_rate = 0.10;
+
+    if (number_islands == 1) {
+        inter_island_co_rate = 0.0;
+        intra_island_co_rate = 0.30;
+    }
+
+    bool repeat_extinction = argument_exists(arguments, "--repeat_extinction");
+
+    bool start_filled = argument_exists(arguments, "--start_filled");
+    bool tl_epigenetic_weights = argument_exists(arguments, "--tl_epigenetic_weights");
+
+    OneNasIslandSpeciationStrategy* island_strategy = new OneNasIslandSpeciationStrategy(
+        number_islands, generated_population_size, elite_population_size, mutation_rate, intra_island_co_rate
+        ,
+        inter_island_co_rate, seed_genome, island_ranking_method, repopulation_method,
+        extinction_event_generation_number, num_mutations, islands_to_exterminate, repeat_extinction
+    );
+
+    return island_strategy;
 }
 
 IslandSpeciationStrategy* generate_island_speciation_strategy_from_arguments(
@@ -170,12 +256,39 @@ bool is_neat_strategy(string strategy_name) {
     }
 }
 
+bool is_onenas_strategy(string strategy_name) {
+    if (strategy_name.compare("onenas") == 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void write_time_series_to_file(const vector<string>& arguments, TimeSeriesSets* time_series_sets) {
     if (argument_exists(arguments, "--write_time_series")) {
         string base_filename;
         get_argument(arguments, "--write_time_series", true, base_filename);
         time_series_sets->write_time_series_sets(base_filename);
     }
+}
+
+void slice_online_time_series(
+    const vector<string>& arguments, TimeSeriesSets* time_series_sets, vector<vector<vector<double> > >& inputs,
+    vector<vector<vector<double> > >& outputs
+) {
+    int32_t time_offset = 1;
+    get_argument(arguments, "--time_offset", true, time_offset);
+
+    time_series_sets->export_training_series(time_offset, inputs, outputs);
+    // time_series_sets->export_test_series(time_offset, validation_inputs, validation_outputs);
+
+    int32_t sequence_length = 0;
+    if (get_argument(arguments, "--time_series_length", true, sequence_length)) {
+        Log::info("Slicing input training data with time sequence length: %d\n", sequence_length);
+        slice_input_data(inputs, outputs, sequence_length);
+    }
+
+    Log::info("Generating time series data finished! \n");
 }
 
 void get_train_validation_data(

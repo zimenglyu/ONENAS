@@ -569,24 +569,43 @@ double RNN::prediction_mae(
     return calculate_error_mae(expected_outputs);
 }
 
-vector<double> RNN::get_predictions(
-    const vector<vector<double> >& series_data, const vector<vector<double> >& expected_outputs, bool using_dropout,
-    double dropout_probability
-) {
+// vector<double> RNN::get_predictions(
+//     const vector<vector<double> >& series_data, const vector<vector<double> >& expected_outputs, bool using_dropout,
+//     double dropout_probability
+// ) {
+//     forward_pass(series_data, using_dropout, false, dropout_probability);
+
+//     vector<double> result;
+
+//     for (int32_t j = 0; j < series_length; j++) {
+//         for (int32_t i = 0; i < (int32_t) output_nodes.size(); i++) {
+//             result.push_back(output_nodes[i]->output_values[j]);
+//         }
+//     }
+
+//     // TODO: returning a vector isn't the most efficient, but i don't think we'll be using this for things that are
+//     // performance critical -- Travis
+
+//     return result;
+// }
+
+vector<vector<double>> RNN::get_predictions(const vector< vector<double> > &series_data, const vector< vector<double> > &expected_outputs, bool using_dropout, double dropout_probability) {
     forward_pass(series_data, using_dropout, false, dropout_probability);
 
-    vector<double> result;
+    vector<vector<double>> results;
 
-    for (int32_t j = 0; j < series_length; j++) {
-        for (int32_t i = 0; i < (int32_t) output_nodes.size(); i++) {
-            result.push_back(output_nodes[i]->output_values[j]);
+    for (int i = 0; i < (int32_t)output_nodes.size(); i++) {
+        vector<double> output_result;
+        for (int j = 0; j < series_length; j++) {
+            output_result.push_back(output_nodes[i]->output_values[j]);
         }
+        results.push_back(output_result);
     }
 
-    // TODO: returning a vector isn't the most efficient, but i don't think we'll be using this for things that are
-    // performance critical -- Travis
+    //TODO: returning a vector isn't the most efficient, but i don't think we'll be using this for things that are performance
+    //critical -- Travis
 
-    return result;
+    return results;
 }
 
 void RNN::write_predictions(
