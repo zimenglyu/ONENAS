@@ -225,12 +225,12 @@ void worker(int32_t rank, OnlineSeries* online_series) {
             for ( int32_t  i = 0; i < (int32_t)train_index.size(); i++) {
                 current_training_inputs.push_back(time_series_inputs[train_index[i]]);
                 current_training_outputs.push_back(time_series_outputs[train_index[i]]);
-                Log::info("Worker: training index: %d\n", train_index[i]);
+                Log::debug("Worker: training index: %d\n", train_index[i]);
             }
             for (int32_t  i = 0; i < (int32_t)validation_index.size(); i++) {
                 current_validation_inputs.push_back(time_series_inputs[validation_index[i]]);
                 current_validation_outputs.push_back(time_series_outputs[validation_index[i]]);
-                Log::info("Worker: validation index: %d\n", validation_index[i]);
+                Log::debug("Worker: validation index: %d\n", validation_index[i]);
             }
 
             //have each worker write the backproagation to a separate log file

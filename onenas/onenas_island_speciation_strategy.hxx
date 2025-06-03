@@ -227,6 +227,18 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate);
         RNN_Genome* get_seed_genome();
         void save_entire_population(string output_path);
+
+        /**
+         * \return the number of full islands
+         */
+        int32_t number_filled_islands();
+
+        /**
+         * \return another full island that is not the first island. Need to have at least 2 full islands.
+         */
+        int32_t get_other_full_island(
+            uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, int32_t first_island
+        ); 
 };
 
 

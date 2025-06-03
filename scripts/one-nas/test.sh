@@ -33,7 +33,7 @@ mpirun -np 2 ./mpi/onanas_mpi \
 --speciation_method onenas \
 --generated_population_size 5 \
 --elite_population_size 2 \
---total_generation 10 \
+--total_generation 15 \
 --possible_node_types simple UGRNN MGU GRU delta LSTM \
 --std_message_level INFO \
 --file_message_level INFO

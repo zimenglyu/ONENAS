@@ -296,12 +296,13 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_for_filled_island(
     OneNasIsland* island = islands[generation_island];
     RNN_Genome* genome;
     double r = rng_0_1(generator);
+
     if (!islands_full() || r < mutation_rate) {
         Log::debug("performing mutation\n");
         island->copy_random_genome(rng_0_1, generator, &genome);
         mutate(num_mutations, genome);
 
-    } else if (r < intra_island_crossover_rate || number_of_islands == 1) {
+    } else if (r < intra_island_crossover_rate || number_filled_islands() == 1) {
         // intra-island crossover
         Log::debug("performing intra-island crossover\n");
         // select two distinct parent genomes in the same island
@@ -316,12 +317,11 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_for_filled_island(
         island->copy_random_genome(rng_0_1, generator, &parent1);
 
         // select a different island randomly
-        int32_t other_island = rng_0_1(generator) * (number_of_islands - 1);
-        if (other_island >= generation_island) {
-            other_island++;
-        }
+        int32_t other_island_index = get_other_full_island(rng_0_1, generator, generation_island);
+
         // get the best genome from the other island
-        RNN_Genome* parent2 = islands[other_island]->get_best_genome()->copy();  // new RNN GENOME
+        RNN_Genome* parent2 = islands[other_island_index]->get_best_genome()->copy();  // new RNN GENOME
+
         // swap so the first parent is the more fit parent
         if (parent1->get_fitness() > parent2->get_fitness()) {
             RNN_Genome* tmp = parent1;
@@ -670,6 +670,36 @@ void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const 
     // generation ++;
     // return global_best_genome;
     current_generation ++;
+}
+
+int32_t OneNasIslandSpeciationStrategy::number_filled_islands() {
+    int32_t n_filled = 0;
+    
+    for (int32_t i = 0; i < number_of_islands; i++) {
+        if (islands[i]->elite_is_full()) {
+            n_filled++;
+        }
+    }
+    
+    return n_filled;
+}
+
+int32_t OneNasIslandSpeciationStrategy::get_other_full_island(
+    uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, int32_t first_island
+) {
+    // select a different island randomly
+    Log::debug("other filled islands:\n");
+    vector<int32_t> other_filled_islands;
+    for (int32_t i = 0; i < number_of_islands; i++) {
+        if (i != first_island && islands[i]->elite_is_full()) {
+            other_filled_islands.push_back(i);
+            Log::debug("\t %d\n", i);
+        }
+    }
+    int32_t other_island = other_filled_islands[rng_0_1(generator) * other_filled_islands.size()];
+    Log::debug("other island: %d\n", other_island);
+    
+    return other_island;
 }
 
 void OneNasIslandSpeciationStrategy::evaluate_elite_population(const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output) {
