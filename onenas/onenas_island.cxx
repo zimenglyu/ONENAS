@@ -107,9 +107,11 @@ void OneNasIsland::copy_random_genome(uniform_real_distribution<double> &rng_0_1
     // int32_t genome_position = size() * rng_0_1(generator);
     // *genome = genomes[genome_position]->copy();
     if (elite_size() > 0) {
+        Log::info("Island %d: copying random genome from elite population\n", id);
         elite_population->copy_random_genome(rng_0_1, generator, genome);
 
     } else if (generated_size() > 0) {
+        Log::info("Island %d: copying random genome from generated population\n", id);
         generated_population->copy_random_genome(rng_0_1, generator, genome);
     } else {
         Log::fatal("ERROR: Cannot copy random genome from island %d - both elite and generated populations are empty!\n", id);
@@ -144,10 +146,8 @@ void OneNasIsland::copy_two_random_genomes(uniform_real_distribution<double> &rn
 int32_t OneNasIsland::insert_genome(RNN_Genome *genome) {
     int32_t insert_position;
     if (genome->get_genome_type() == GENERATED) {
-        Log::info("inserting genome to generated population\n");
         insert_position = generated_population->insert_genome(genome);
     } else if (genome->get_genome_type() == ELITE) {
-        Log::info("inserting genome to elite population\n");
 
         insert_position = elite_population->insert_genome(genome);
     } else {
@@ -225,6 +225,7 @@ void OneNasIsland::set_erase_again_num() {
 
 void OneNasIsland::evaluate_elite_population(const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output) {
         // if (elite_genomes.size() == 0) return;
+    Log::info("Finalizing generation: Evaluating elite population on island %d\n", id);
     vector<RNN_Genome *> elite_genomes = elite_population->get_genomes();
     int32_t elite_population_size = elite_population->get_population_size();
     for (int32_t i = 0; i < elite_population_size; i++) {
@@ -232,11 +233,15 @@ void OneNasIsland::evaluate_elite_population(const vector< vector< vector<double
         g->evaluate_online(validation_input, validation_output);
     }
     elite_population->sort_population("MSE");
+    for (int32_t i = 0; i < elite_population_size; i++) {
+        Log::info("Island %d: elite genome %d fitness: %f\n", id, i, elite_genomes[i]->get_fitness());
+    }
 }
 
 
 void OneNasIsland::select_elite_population() {
     // vector<RNN_Genome*> elite_genomes = Elite_population->get_genomes();
+    Log::info("Finalizing generation: Selecting elite population on island %d\n", id);
     vector<RNN_Genome*> trained_genomes = generated_population->get_genomes();
 
     for (int i = 0; i < (int32_t)trained_genomes.size(); i++) {
@@ -262,13 +267,13 @@ void OneNasIsland::generation_check() {
     //  at the end of each generation, check if the elite population is full
     // and check if the generated population is empty
     if (elite_is_full()) {
-        Log::info("generation check: Island %d elite population is full\n", id);
+        Log::info("Generation check: Island %d elite population is full\n", id);
     } else {
-        Log::info("generation check: Island %d elite population is not full, its size is %d\n", id, elite_size());
+        Log::error("Generation check: Island %d elite population is not full, its size is %d\n", id, elite_size());
     }
     if (generated_population->is_empty()) {
-        Log::info("generation check: Island %d generated population is empty\n", id);
+        Log::info("Generation check: Island %d generated population is empty\n", id);
     } else {
-        Log::info("generation check: Island %d generated population is not empty, its size is %d\n", id, generated_size());
+        Log::error("Generation check: Island %d generated population is not empty, its size is %d\n", id, generated_size());
     }
 }

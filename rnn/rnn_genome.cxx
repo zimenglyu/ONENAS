@@ -153,6 +153,7 @@ void RNN_Genome::set_parameter_names(
 }
 
 RNN_Genome* RNN_Genome::copy() {
+    // Log::info("Copying genome, generation_id: %d\n", generation_id);
     vector<RNN_Node_Interface*> node_copies;
     vector<RNN_Edge*> edge_copies;
     vector<RNN_Recurrent_Edge*> recurrent_edge_copies;
@@ -3588,7 +3589,7 @@ void RNN_Genome::write_to_file(string bin_filename) {
 }
 
 void RNN_Genome::write_to_stream(ostream& bin_ostream) {
-    Log::info("WRITING GENOME TO STREAM\n");
+
     bin_ostream.write((char*) &generation_id, sizeof(int32_t));
     bin_ostream.write((char*) &group_id, sizeof(int32_t));
     bin_ostream.write((char*) &bp_iterations, sizeof(int32_t));

@@ -20,6 +20,8 @@ using std::endl;
 #include <unordered_map>
 using std::unordered_map;
 
+#include <cassert>
+
 #include "population.hxx"
 #include "rnn/rnn_genome.hxx"
 
@@ -73,28 +75,17 @@ bool Population::is_empty() {
 void Population::copy_random_genome(uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, RNN_Genome **genome) {
     if (genomes.size() == 0) {
         Log::fatal("ERROR: Attempting to copy random genome from empty population (type: %d, island: %d)\n", population_type, island_id);
-        *genome = NULL;
-        return;
+        exit(1);
     }
     int32_t genome_position = size() * rng_0_1(generator);
     
     // Additional safety check for the genome itself
     if (genome_position < 0 || genome_position >= (int32_t)genomes.size()) {
         Log::fatal("ERROR: Invalid genome position %d in population of size %d (type: %d, island: %d)\n", genome_position, genomes.size(), population_type, island_id);
-        *genome = NULL;
-        return;
+        exit(1);
     }
     
-    if (genomes[genome_position] == NULL) {
-        Log::fatal("ERROR: Genome at position %d is NULL in population (type: %d, island: %d)\n", genome_position, population_type, island_id);
-        *genome = NULL;
-        return;
-    }
-    
-    Log::debug("Copying genome at position %d from population (type: %d, island: %d), generation_id: %d\n", 
-               genome_position, population_type, island_id, genomes[genome_position]->get_generation_id());
-    
-    // assert (genomes[genome_position]->get_weight_rules()!=NULL);
+    assert (genomes[genome_position]!=NULL);
     *genome = genomes[genome_position]->copy();
 }
 
@@ -115,9 +106,11 @@ void Population::copy_two_random_genomes(uniform_real_distribution<double> &rng_
         p1 = p2;
         p2 = tmp;
     }
-
+    assert (genomes[p1]!=NULL);
+    assert (genomes[p2]!=NULL);
     *genome1 = genomes[p1]->copy();
     *genome2 = genomes[p2]->copy();
+
 }
 
 
@@ -125,7 +118,7 @@ void Population::copy_two_random_genomes(uniform_real_distribution<double> &rng_
 //inserts a copy of the genome, caller of the function will need to delete their
 //pointer
 int32_t Population::insert_genome(RNN_Genome *genome) {
-    int32_t initial_size = (int32_t)genomes.size();
+    // int32_t initial_size = (int32_t)genomes.size();
     Log::info("inserting genome to island %d, population %s\n", island_id, population_type == GENERATED ? "generated" : "elite");
     Log::debug("getting fitness of genome copy\n");
     double new_fitness = genome->get_fitness();

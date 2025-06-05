@@ -60,8 +60,8 @@ OneNasIslandSpeciationStrategy::OneNasIslandSpeciationStrategy(
 
     intra_island_crossover_rate += mutation_rate;
     inter_island_crossover_rate += intra_island_crossover_rate;
-    Log::error("generated population size is %d, elite populaiton size is %d\n", generated_population_size, elite_population_size);
-    Log::error("mutation rate %f, inter-island crossover rate %f, intra island crossover rate %f\n", mutation_rate, inter_island_crossover_rate, intra_island_crossover_rate);
+    Log::info("OneNAS Strategy: Generated population size is %d, elite population size is %d\n", generated_population_size, elite_population_size);
+    Log::info("OneNAS Strategy: Mutation rate %f, inter-island crossover rate %f, intra island crossover rate %f\n", mutation_rate, inter_island_crossover_rate, intra_island_crossover_rate);
 
     //set the generation id for the initial minimal genome
     seed_genome->set_generation_id(generated_genomes);
@@ -146,8 +146,6 @@ int32_t OneNasIslandSpeciationStrategy::insert_genome(RNN_Genome* genome) {
     evaluated_genomes++;
     int32_t island = genome->get_group_id();
 
-    Log::info("inserting genome to island: %d\n", island);
-
     int32_t insert_position = islands[island]->insert_genome(genome);
 
 
@@ -179,8 +177,8 @@ vector<int32_t> OneNasIslandSpeciationStrategy::rank_islands() {
     vector<int32_t> island_rank;
     int32_t temp;
     double fitness_j1, fitness_j2;
-    Log::info("ranking islands \n");
-    Log::info("repeat extinction: %s \n", repeat_extinction? "true":"false");
+    Log::info("ranking islands\n");
+    Log::info("repeat extinction: %s\n", repeat_extinction? "true":"false");
     for (int32_t i = 0; i< number_of_islands; i++){
         if (repeat_extinction) {
             island_rank.push_back(i);
@@ -202,9 +200,9 @@ vector<int32_t> OneNasIslandSpeciationStrategy::rank_islands() {
             }
         }
     }
-    Log::info("island rank: \n");
+    Log::debug("island rank:\n");
     for (int32_t i = 0; i < (int32_t)island_rank.size(); i++){
-        Log::info("island: %d fitness %f \n", island_rank[i], islands[island_rank[i]]->get_best_fitness());
+        Log::debug("island: %d fitness %f\n", island_rank[i], islands[island_rank[i]]->get_best_fitness());
     }
     return island_rank;
 }
@@ -215,23 +213,23 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_genome(uniform_real_distrib
     //robin fashion.
 
 
-    Log::info("ONENES generate genome %d for island: %d\n", generated_genomes, generation_island);
+    Log::info("Generating genome %d for island: %d\n", generated_genomes, generation_island);
     OneNasIsland *current_island = islands[generation_island];
     RNN_Genome *new_genome = NULL;
 
     // Log::info("generating new genome for island[%d], island_size: %d, max_island_size: %d, mutation_rate: %lf, intra_island_crossover_rate: %lf, inter_island_crossover_rate: %lf\n", generation_island, island->size(), generated_genome_size, mutation_rate, intra_island_crossover_rate, inter_island_crossover_rate);
     if (current_island->is_initializing()) {
-        Log::info("Current island %d is initializing!\n", generation_island);
+        Log::info("Island %d: island is initializing\n", generation_island);
         new_genome = generate_for_initializing_island(rng_0_1, generator, mutate, weight_rules);
 
     } else if (current_island->elite_is_full()) {
-        Log::info("Current island elite %d is full!\n", generation_island);
+        Log::info("Island %d: island elite is full\n", generation_island);
         new_genome = generate_for_filled_island(rng_0_1, generator, mutate, crossover);
 
     } else if (current_island->is_repopulating()) {
         //select two other islands (non-overlapping) at random, and select genomes
         //from within those islands and generate a child via crossover
-        Log::info("island %d is repopulating \n", generation_island);
+        Log::info("Island %d: island is repopulating\n", generation_island);
         new_genome = generate_for_repopulating_island(rng_0_1, generator, mutate, crossover, weight_rules);
 
     } else {
@@ -301,14 +299,14 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_for_filled_island(
     RNN_Genome* genome;
     double r = rng_0_1(generator);
 
-    if (!islands_full() || r < mutation_rate) {
-        Log::info("performing mutation\n");
+    if (!island->elite_is_full() || r < mutation_rate) {
+        Log::info("Island %d generate_for_filled_island: populating through mutation\n", generation_island);
         island->copy_random_genome(rng_0_1, generator, &genome);
         mutate(num_mutations, genome);
 
     } else if (r < intra_island_crossover_rate || number_filled_islands() == 1) {
         // intra-island crossover
-        Log::info("performing intra-island crossover\n");
+        Log::info("Island %d generate_for_filled_island: performing intra-island crossover\n", generation_island);
         // select two distinct parent genomes in the same island
         RNN_Genome *parent1 = NULL, *parent2 = NULL;
         island->copy_two_random_genomes(rng_0_1, generator, &parent1, &parent2);
@@ -317,12 +315,13 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_for_filled_island(
         delete parent2;
     } else {
         // get a random genome from this island
+        Log::info("Island %d: island is full and is populating through inter-island crossover\n", generation_island);
         RNN_Genome* parent1 = NULL;
         island->copy_random_genome(rng_0_1, generator, &parent1);
 
         // select a different island randomly
         int32_t other_island_index = get_other_full_island(rng_0_1, generator, generation_island);
-
+        Log::info("Island %d: select island: %d as parent 2 for inter-island crossover\n", generation_island, other_island_index);
         // get the best genome from the other island
         RNN_Genome* parent2 = islands[other_island_index]->get_best_genome()->copy();  // new RNN GENOME
 
@@ -453,19 +452,19 @@ RNN_Genome* OneNasIslandSpeciationStrategy::parents_repopulation(
 ) {
     RNN_Genome* genome = NULL;
 
-    Log::debug("generation island: %d \n", generation_island);
+    Log::debug("generation island: %d\n", generation_island);
     int32_t parent_island1;
     do {
         parent_island1 = (number_of_islands - 1) * rng_0_1(generator);
     } while (parent_island1 == generation_island);
 
-    Log::debug("parent island 1: %d \n", parent_island1);
+    Log::debug("parent island 1: %d\n", parent_island1);
     int32_t parent_island2;
     do {
         parent_island2 = (number_of_islands - 1) * rng_0_1(generator);
     } while (parent_island2 == generation_island || parent_island2 == parent_island1);
 
-    Log::debug("parent island 2: %d \n", parent_island2);
+    Log::debug("parent island 2: %d\n", parent_island2);
     RNN_Genome* parent1 = NULL;
     RNN_Genome* parent2 = NULL;
 
@@ -625,7 +624,7 @@ void OneNasIslandSpeciationStrategy::set_erased_islands_status() {
     for (int i = 0; i < (int32_t)islands.size(); i++) {
         if (islands[i] -> get_erase_again_num() > 0) {
             islands[i] -> set_erase_again_num();
-            Log::info("Island %d can be removed in %d rounds.\n", i, islands[i] -> get_erase_again_num());
+            Log::debug("Island %d can be removed in %d rounds.\n", i, islands[i] -> get_erase_again_num());
         }
     }
 }
@@ -638,11 +637,11 @@ void OneNasIslandSpeciationStrategy::initialize_population(function<void(int32_t
         // }
         islands.push_back(new_island);
     }
-    Log::info("ONENAS Speciation Strategy: Initialized %d islands\n", islands.size());
+    Log::info("OneNAS Speciation Strategy: Initialized %d islands\n", islands.size());
 }
 
 void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
-    Log::info("ONENAS Speciation Strategy: Finalizing the generation\n");
+    Log::info("OneNAS Speciation Strategy: Finalizing the generation\n");
     // steps in finalize_generation:
     // 1. evaluate_elite_population: update its fitness with most recent validation mse + sort the elite population
     // 2. select_elite_population: insert the new generated population into the elite population. then clear the generated population
@@ -656,27 +655,27 @@ void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const 
     global_best_genome = select_global_best_genome();
     write_global_best_prediction(filename, test_input, test_output);
 
-    if (extinction_event_generation_number != 0){
-        if(current_generation % extinction_event_generation_number == 0 ) {
-            if (island_ranking_method.compare("EraseWorst") == 0 || island_ranking_method.compare("") == 0){
-                // global_best_genome = get_best_genome()->copy();
-                vector<int32_t> rank = rank_islands();
-                for (int32_t i = 0; i < islands_to_exterminate; i++){
-                    if (rank[i] >= 0){
-                        Log::info("found island: %d is the worst island \n",rank[0]);
-                        islands[rank[i]]->erase_island();
-                        // islands[rank[i]]->erase_structure_map();
-                        islands[rank[i]]->set_status(OneNasIsland::REPOPULATING);
-                    }
-                    else Log::info("Didn't find the worst island!");
-                    // set this so the island would not be re-killed in 5 rounds
-                    if (!repeat_extinction) {
-                        set_erased_islands_status();
-                    }
-                }
-            }
-        }
-    }
+    // if (extinction_event_generation_number != 0){
+    //     if(current_generation % extinction_event_generation_number == 0 ) {
+    //         if (island_ranking_method.compare("EraseWorst") == 0 || island_ranking_method.compare("") == 0){
+    //             // global_best_genome = get_best_genome()->copy();
+    //             vector<int32_t> rank = rank_islands();
+    //             for (int32_t i = 0; i < islands_to_exterminate; i++){
+    //                 if (rank[i] >= 0){
+    //                     Log::info("found island: %d is the worst island\n",rank[0]);
+    //                     islands[rank[i]]->erase_island();
+    //                     // islands[rank[i]]->erase_structure_map();
+    //                     islands[rank[i]]->set_status(OneNasIsland::REPOPULATING);
+    //                 }
+    //                 else Log::error("Didn't find the worst island!");
+    //                 // set this so the island would not be re-killed in 5 rounds
+    //                 if (!repeat_extinction) {
+    //                     set_erased_islands_status();
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
     // Elite_population->write_prediction(filename, test_input, test_output, time_series_sets);
     // generation ++;
     // return global_best_genome;
@@ -685,7 +684,7 @@ void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const 
 
 void OneNasIslandSpeciationStrategy::generation_check() {
     for (int i = 0; i < number_of_islands; i++) {
-        islands[i] -> generation_check();
+        islands[i]->generation_check();
     }
 }
 
