@@ -28,9 +28,6 @@ EXAMM* generate_examm_from_arguments(
     bool generate_op_log = false;
     get_argument(arguments, "--generate_op_log", false, generate_op_log);
 
-    bool generate_visualization_json = false;
-    get_argument(arguments, "--generate_visualization_json", false, generate_visualization_json);
-
 
     Log::info(
         "Setting up examm with %d islands, island size %d, and max_genome %d\n", number_islands, island_size,
@@ -64,7 +61,7 @@ EXAMM* generate_examm_from_arguments(
 
     EXAMM* examm = new EXAMM(
         island_size, number_islands, max_genomes, speciation_strategy, weight_rules, genome_property, output_directory,
-        save_genome_option, generate_op_log, generate_visualization_json
+        save_genome_option, generate_op_log
     );
     if (possible_node_types.size() > 0) {
         examm->set_possible_node_types(possible_node_types);
@@ -165,9 +162,6 @@ OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_
     }
 
     bool repeat_extinction = argument_exists(arguments, "--repeat_extinction");
-
-    bool start_filled = argument_exists(arguments, "--start_filled");
-    bool tl_epigenetic_weights = argument_exists(arguments, "--tl_epigenetic_weights");
 
     OneNasIslandSpeciationStrategy* island_strategy = new OneNasIslandSpeciationStrategy(
         number_islands, generated_population_size, elite_population_size, mutation_rate, intra_island_co_rate

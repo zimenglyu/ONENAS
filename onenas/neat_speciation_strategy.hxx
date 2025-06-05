@@ -107,7 +107,7 @@ class NeatSpeciationStrategy : public SpeciationStrategy {
      */
     RNN_Genome* generate_genome(
         uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator,
-        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
     );
 
     RNN_Genome* generate_for_species(
@@ -145,7 +145,7 @@ class NeatSpeciationStrategy : public SpeciationStrategy {
     bool check_population();
 
     void check_species();
-    void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate);
+    void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules);
     RNN_Genome* get_seed_genome();
     void save_entire_population(string output_path);
     void finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);

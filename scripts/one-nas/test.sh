@@ -22,8 +22,8 @@ mpirun -np 2 ./mpi/onanas_mpi \
 --time_offset 1 \
 --input_parameter_names $INPUT_PARAMETERS \
 --output_parameter_names $OUTPUT_PARAMETERS \
---number_islands 10 \
---bp_iterations 5 \
+--number_islands 5 \
+--bp_iterations 2 \
 --output_directory $exp_name \
 --num_mutations 2 \
 --time_series_length 50 \
@@ -31,9 +31,9 @@ mpirun -np 2 ./mpi/onanas_mpi \
 --num_training_sets 50  \
 --get_train_data_by v1 \
 --speciation_method onenas \
---generated_population_size 5 \
---elite_population_size 2 \
+--generated_population_size 10 \
+--elite_population_size 5 \
 --total_generation 15 \
 --possible_node_types simple UGRNN MGU GRU delta LSTM \
 --std_message_level INFO \
---file_message_level INFO
+--file_message_level NONE

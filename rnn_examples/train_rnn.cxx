@@ -208,7 +208,7 @@ int main(int argc, char** argv) {
 
     using_dropout = false;
 
-    genome->initialize_randomly();
+    genome->initialize_randomly(weight_rules);
 
     double learning_rate = 0.001;
     get_argument(arguments, "--learning_rate", false, learning_rate);

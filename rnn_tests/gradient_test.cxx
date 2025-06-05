@@ -44,7 +44,8 @@ void generate_random_vector(int number_parameters, vector<double>& v) {
 }
 
 void gradient_test(
-    string name, RNN_Genome* genome, const vector<vector<double> >& inputs, const vector<vector<double> >& outputs
+    string name, RNN_Genome* genome, const vector<vector<double> >& inputs, const vector<vector<double> >& outputs,
+    WeightRules* weight_rules
 ) {
     genome->set_stochastic(false);
     double analytic_mse, empirical_mse;
@@ -54,7 +55,7 @@ void gradient_test(
     Log::info("\ttesting gradient on '%s'...\n", name.c_str());
     bool failed = false;
 
-    genome->initialize_randomly();
+    genome->initialize_randomly(weight_rules);
     RNN* rnn = genome->get_rnn();
     Log::debug("got genome \n");
 

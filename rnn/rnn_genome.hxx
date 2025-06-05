@@ -54,9 +54,8 @@ class RNN_Genome {
 
     string log_filename;
 
-    WeightRules* weight_rules;
+    // WeightRules* weight_rules;
 
-    vector<int32_t> parent_ids;
     map<string, int32_t> generated_by_map;
 
     vector<double> initial_parameters;
@@ -92,12 +91,11 @@ class RNN_Genome {
     void sort_recurrent_edges_by_depth();
 
     RNN_Genome(
-        vector<RNN_Node_Interface*>& _nodes, vector<RNN_Edge*>& _edges, vector<RNN_Recurrent_Edge*>& _recurrent_edges,
-        WeightRules* weight_rules
+        vector<RNN_Node_Interface*>& _nodes, vector<RNN_Edge*>& _edges, vector<RNN_Recurrent_Edge*>& _recurrent_edges
     );
     RNN_Genome(
         vector<RNN_Node_Interface*>& _nodes, vector<RNN_Edge*>& _edges, vector<RNN_Recurrent_Edge*>& _recurrent_edges,
-        int16_t seed, WeightRules* weight_rules
+        int16_t seed
     );
 
     RNN_Genome* copy();
@@ -170,11 +168,11 @@ class RNN_Genome {
     int32_t get_number_outputs();
 
     double get_avg_edge_weight();
-    void initialize_randomly();
+    void initialize_randomly(WeightRules* weight_rules);
     void initialize_xavier(RNN_Node_Interface* n);
     void initialize_kaiming(RNN_Node_Interface* n);
     void initialize_gp(RNN_Node_Interface* n);
-    void initialize_node_randomly(RNN_Node_Interface* n);
+    void initialize_node_randomly(RNN_Node_Interface* n, WeightRules* weight_rules);
     double get_xavier_weight(RNN_Node_Interface* output_node);
     double get_kaiming_weight(RNN_Node_Interface* output_node);
     double get_random_weight();
@@ -252,49 +250,49 @@ class RNN_Genome {
     bool outputs_unreachable();
 
     RNN_Node_Interface* create_node(
-        double mu, double sigma, int32_t node_type, int32_t& node_innovation_count, double depth
+        double mu, double sigma, int32_t node_type, int32_t& node_innovation_count, double depth, WeightRules* weight_rules
     );
 
     bool attempt_edge_insert(
-        RNN_Node_Interface* n1, RNN_Node_Interface* n2, double mu, double sigma, int32_t& edge_innovation_count
+        RNN_Node_Interface* n1, RNN_Node_Interface* n2, double mu, double sigma, int32_t& edge_innovation_count, WeightRules* weight_rules
     );
     bool attempt_recurrent_edge_insert(
         RNN_Node_Interface* n1, RNN_Node_Interface* n2, double mu, double sigma, uniform_int_distribution<int32_t> dist,
-        int32_t& edge_innovation_count
+        int32_t& edge_innovation_count, WeightRules* weight_rules
     );
 
     // after adding an Elman or Jordan node, generate the circular RNN edge for Elman and the
     // edges from output to this node for Jordan.
     void generate_recurrent_edges(
         RNN_Node_Interface* node, double mu, double sigma, uniform_int_distribution<int32_t> dist,
-        int32_t& edge_innovation_count
+        int32_t& edge_innovation_count, WeightRules* weight_rules
     );
 
-    bool add_edge(double mu, double sigma, int32_t& edge_innovation_count);
+    bool add_edge(double mu, double sigma, int32_t& edge_innovation_count, WeightRules* weight_rules);
     bool add_recurrent_edge(
-        double mu, double sigma, uniform_int_distribution<int32_t> rec_depth_dist, int32_t& edge_innovation_count
+        double mu, double sigma, uniform_int_distribution<int32_t> rec_depth_dist, int32_t& edge_innovation_count, WeightRules* weight_rules
     );
     bool disable_edge();
-    bool enable_edge();
+    bool enable_edge(WeightRules* weight_rules);
     bool split_edge(
         double mu, double sigma, int32_t node_type, uniform_int_distribution<int32_t> rec_depth_dist,
-        int32_t& edge_innovation_count, int32_t& node_innovation_count
+        int32_t& edge_innovation_count, int32_t& node_innovation_count, WeightRules* weight_rules
     );
 
     bool add_node(
         double mu, double sigma, int32_t node_type, uniform_int_distribution<int32_t> dist,
-        int32_t& edge_innovation_count, int32_t& node_innovation_count
+        int32_t& edge_innovation_count, int32_t& node_innovation_count, WeightRules* weight_rules
     );
 
-    bool enable_node();
+    bool enable_node(WeightRules* weight_rules);
     bool disable_node();
     bool split_node(
         double mu, double sigma, int32_t node_type, uniform_int_distribution<int32_t> dist,
-        int32_t& edge_innovation_count, int32_t& node_innovation_count
+        int32_t& edge_innovation_count, int32_t& node_innovation_count, WeightRules* weight_rules
     );
     bool merge_node(
         double mu, double sigma, int32_t node_type, uniform_int_distribution<int32_t> dist,
-        int32_t& edge_innovation_count, int32_t& node_innovation_count
+        int32_t& edge_innovation_count, int32_t& node_innovation_count, WeightRules* weight_rules
     );
 
     /**
@@ -329,15 +327,15 @@ class RNN_Genome {
 
     bool connect_new_input_node(
         double mu, double sig, RNN_Node_Interface* new_node, uniform_int_distribution<int32_t> dist,
-        int32_t& edge_innovation_count, bool not_all_hidden
+        int32_t& edge_innovation_count, bool not_all_hidden, WeightRules* weight_rules
     );
     bool connect_new_output_node(
         double mu, double sig, RNN_Node_Interface* new_node, uniform_int_distribution<int32_t> dist,
-        int32_t& edge_innovation_count, bool not_all_hidden
+        int32_t& edge_innovation_count, bool not_all_hidden, WeightRules* weight_rules
     );
     bool connect_node_to_hid_nodes(
         double mu, double sig, RNN_Node_Interface* new_node, uniform_int_distribution<int32_t> dist,
-        int32_t& edge_innovation_count, bool from_input
+        int32_t& edge_innovation_count, bool from_input, WeightRules* weight_rules
     );
     vector<RNN_Node_Interface*> pick_possible_nodes(int32_t layer_type, bool not_all_hidden, string node_type);
 
@@ -368,8 +366,10 @@ class RNN_Genome {
     void transfer_to(
         const vector<string>& new_input_parameter_names, const vector<string>& new_output_parameter_names,
         string transfer_learning_version, bool epigenetic_weights, int32_t min_recurrent_depth,
-        int32_t max_recurrent_depth
+        int32_t max_recurrent_depth, WeightRules* weight_rules
     );
+
+    // WeightRules* get_weight_rules() const;
 
     friend class EXAMM;
     friend class ONENAS;

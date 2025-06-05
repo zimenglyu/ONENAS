@@ -119,8 +119,10 @@ void OneNasIsland::copy_random_genome(uniform_real_distribution<double> &rng_0_1
 
 void OneNasIsland::copy_two_random_genomes(uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, RNN_Genome **genome1, RNN_Genome **genome2) {
     if (elite_size() >= 2) {
+        Log::info("copying two random genomes from elite population\n");
         elite_population->copy_two_random_genomes(rng_0_1, generator, genome1, genome2);
     } else if (generated_size() >= 2) {
+        Log::info("copying two random genomes from generated population\n");
         generated_population->copy_two_random_genomes(rng_0_1, generator, genome1, genome2);
     } else {
         Log::fatal("CANNOT copy two random genomes, elite population size is %d, generated population size is %d\n", elite_size(), generated_size());
@@ -254,4 +256,19 @@ void OneNasIsland::write_prediction(string filename, const vector< vector< vecto
 void OneNasIsland::save_entire_population(string output_path) {
     elite_population->save_entire_population(output_path);
     generated_population->save_entire_population(output_path);
+}
+
+void OneNasIsland::generation_check() {
+    //  at the end of each generation, check if the elite population is full
+    // and check if the generated population is empty
+    if (elite_is_full()) {
+        Log::info("generation check: Island %d elite population is full\n", id);
+    } else {
+        Log::info("generation check: Island %d elite population is not full, its size is %d\n", id, elite_size());
+    }
+    if (generated_population->is_empty()) {
+        Log::info("generation check: Island %d generated population is empty\n", id);
+    } else {
+        Log::info("generation check: Island %d generated population is not empty, its size is %d\n", id, generated_size());
+    }
 }

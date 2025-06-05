@@ -82,11 +82,11 @@ IslandSpeciationStrategy::IslandSpeciationStrategy(
     }
 }
 
-void IslandSpeciationStrategy::initialize_population(function<void(int32_t, RNN_Genome*)>& mutate) {
+void IslandSpeciationStrategy::initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules) {
     for (int32_t i = 0; i < number_of_islands; i++) {
         Island* new_island = new Island(i, max_island_size);
         if (start_filled) {
-            new_island->fill_with_mutated_genomes(seed_genome, seed_stirs, tl_epigenetic_weights, mutate);
+            new_island->fill_with_mutated_genomes(seed_genome, seed_stirs, tl_epigenetic_weights, mutate, weight_rules);
         }
         islands.push_back(new_island);
     }
@@ -278,21 +278,21 @@ vector<int32_t> IslandSpeciationStrategy::rank_islands() {
 }
 
 RNN_Genome* IslandSpeciationStrategy::generate_for_initializing_island(
-    uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate
+    uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules
 ) {
     Island* current_island = islands[generation_island];
     RNN_Genome* new_genome = NULL;
     if (current_island->size() == 0) {
         Log::info("Island %d: starting island with minimal genome\n", generation_island);
         new_genome = seed_genome->copy();
-        new_genome->initialize_randomly();
+        new_genome->initialize_randomly(weight_rules);
 
         bool stir_seed_genome = false;
         if (stir_seed_genome) {
             Log::info("Stir the seed genome with %d mutations\n", seed_stirs);
             mutate(seed_stirs, new_genome);
             if (!tl_epigenetic_weights) {
-                new_genome->initialize_randomly();
+                new_genome->initialize_randomly(weight_rules);
             }
         }
     } else {
@@ -315,7 +315,7 @@ RNN_Genome* IslandSpeciationStrategy::generate_for_initializing_island(
 
 RNN_Genome* IslandSpeciationStrategy::generate_for_repopulating_island(
     uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate,
-    function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+    function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
 ) {
     Log::info("Island %d: island is repopulating \n", generation_island);
     // Island *current_island = islands[generation_island];
@@ -323,11 +323,11 @@ RNN_Genome* IslandSpeciationStrategy::generate_for_repopulating_island(
 
     if (repopulation_method.compare("randomParents") == 0 || repopulation_method.compare("randomparents") == 0) {
         Log::info("Island %d: island is repopulating through random parents method!\n", generation_island);
-        new_genome = parents_repopulation("randomParents", rng_0_1, generator, mutate, crossover);
+        new_genome = parents_repopulation("randomParents", rng_0_1, generator, mutate, crossover, weight_rules);
 
     } else if (repopulation_method.compare("bestParents") == 0 || repopulation_method.compare("bestparents") == 0) {
         Log::info("Island %d: island is repopulating through best parents method!\n", generation_island);
-        new_genome = parents_repopulation("bestParents", rng_0_1, generator, mutate, crossover);
+        new_genome = parents_repopulation("bestParents", rng_0_1, generator, mutate, crossover, weight_rules);
 
     } else if (repopulation_method.compare("bestGenome") == 0 || repopulation_method.compare("bestgenome") == 0) {
         new_genome = get_global_best_genome()->copy();
@@ -358,7 +358,7 @@ RNN_Genome* IslandSpeciationStrategy::generate_for_repopulating_island(
 
 RNN_Genome* IslandSpeciationStrategy::generate_genome(
     uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate,
-    function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+    function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
 ) {
     Log::debug("getting island: %d\n", generation_island);
     Island* current_island = islands[generation_island];
@@ -366,15 +366,15 @@ RNN_Genome* IslandSpeciationStrategy::generate_genome(
 
     if (current_island->is_initializing()) {
         // islands could start with full of mutated seed genomes, it can be used with or without transfer learning
-        new_genome = generate_for_initializing_island(rng_0_1, generator, mutate);
+        new_genome = generate_for_initializing_island(rng_0_1, generator, mutate, weight_rules);
     } else if (current_island->is_full()) {
         new_genome = generate_for_filled_island(rng_0_1, generator, mutate, crossover);
     } else if (current_island->is_repopulating()) {
-        new_genome = generate_for_repopulating_island(rng_0_1, generator, mutate, crossover);
+        new_genome = generate_for_repopulating_island(rng_0_1, generator, mutate, crossover, weight_rules);
     }
     if (new_genome == NULL) {
         Log::info("Island %d: new genome is still null, regenerating\n", generation_island);
-        new_genome = generate_genome(rng_0_1, generator, mutate, crossover);
+        new_genome = generate_genome(rng_0_1, generator, mutate, crossover, weight_rules);
     }
     generated_genomes++;
     new_genome->set_generation_id(generated_genomes);
@@ -524,7 +524,7 @@ string IslandSpeciationStrategy::get_strategy_information_values() const {
 
 RNN_Genome* IslandSpeciationStrategy::parents_repopulation(
     string method, uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator,
-    function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+    function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
 ) {
     RNN_Genome* genome = NULL;
 
@@ -575,7 +575,7 @@ RNN_Genome* IslandSpeciationStrategy::parents_repopulation(
     if (genome->outputs_unreachable()) {
         // no path from at least one input to the outputs
         delete genome;
-        genome = generate_genome(rng_0_1, generator, mutate, crossover);
+        genome = generate_genome(rng_0_1, generator, mutate, crossover, weight_rules);
     }
     return genome;
 }

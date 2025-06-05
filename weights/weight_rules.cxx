@@ -55,13 +55,13 @@ void WeightRules::set_mutated_components_weight_method(WeightType _mutated_compo
     mutated_components_weight = _mutated_components_weight;
 }
 
-string WeightRules::get_weight_initialize_method_name() {
+string WeightRules::get_weight_initialize_method_name() const {
     return WEIGHT_TYPES_STRING[weight_initialize];
 }
-string WeightRules::get_weight_inheritance_method_name() {
+string WeightRules::get_weight_inheritance_method_name() const {
     return WEIGHT_TYPES_STRING[weight_inheritance];
 }
-string WeightRules::get_mutated_components_weight_method_name() {
+string WeightRules::get_mutated_components_weight_method_name() const {
     return WEIGHT_TYPES_STRING[mutated_components_weight];
 }
 
@@ -72,4 +72,10 @@ WeightRules* WeightRules::copy() {
     weight_rule_copy->set_mutated_components_weight_method(mutated_components_weight);
 
     return weight_rule_copy;
+}
+
+void WeightRules::print_weight_rules() const {
+    Log::info("Weight initialize method is set to %s\n", get_weight_initialize_method_name().c_str());
+    Log::info("Weight inheritance method is set to %s\n", get_weight_inheritance_method_name().c_str());
+    Log::info("Mutated component weight update method is set to %s\n", get_mutated_components_weight_method_name().c_str());
 }

@@ -16,6 +16,8 @@ using std::string;
 #include <fstream>
 using std::ofstream;
 
+#include <cassert>
+
 #include "examm.hxx"
 #include "rnn/rnn_genome.hxx"
 #include "onenas_island_speciation_strategy.hxx"
@@ -148,6 +150,7 @@ int32_t OneNasIslandSpeciationStrategy::insert_genome(RNN_Genome* genome) {
 
     int32_t insert_position = islands[island]->insert_genome(genome);
 
+
     if (insert_position == 0) {
         if (new_global_best) return 0;
         else return 1;
@@ -207,28 +210,29 @@ vector<int32_t> OneNasIslandSpeciationStrategy::rank_islands() {
 }
 
 
-RNN_Genome* OneNasIslandSpeciationStrategy::generate_genome(uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, function<void (int32_t, RNN_Genome*)> &mutate, function<RNN_Genome* (RNN_Genome*, RNN_Genome *)> &crossover) {
+RNN_Genome* OneNasIslandSpeciationStrategy::generate_genome(uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, function<void (int32_t, RNN_Genome*)> &mutate, function<RNN_Genome* (RNN_Genome*, RNN_Genome *)> &crossover, WeightRules* weight_rules) {
     //generate the genome from the next island in a round
     //robin fashion.
-    
 
-    Log::info("ONENES generate genome: getting island: %d\n", generation_island);
+
+    Log::info("ONENES generate genome %d for island: %d\n", generated_genomes, generation_island);
     OneNasIsland *current_island = islands[generation_island];
     RNN_Genome *new_genome = NULL;
 
     // Log::info("generating new genome for island[%d], island_size: %d, max_island_size: %d, mutation_rate: %lf, intra_island_crossover_rate: %lf, inter_island_crossover_rate: %lf\n", generation_island, island->size(), generated_genome_size, mutation_rate, intra_island_crossover_rate, inter_island_crossover_rate);
     if (current_island->is_initializing()) {
         Log::info("Current island %d is initializing!\n", generation_island);
-        new_genome = generate_for_initializing_island(rng_0_1, generator, mutate);
+        new_genome = generate_for_initializing_island(rng_0_1, generator, mutate, weight_rules);
 
     } else if (current_island->elite_is_full()) {
+        Log::info("Current island elite %d is full!\n", generation_island);
         new_genome = generate_for_filled_island(rng_0_1, generator, mutate, crossover);
 
     } else if (current_island->is_repopulating()) {
         //select two other islands (non-overlapping) at random, and select genomes
         //from within those islands and generate a child via crossover
         Log::info("island %d is repopulating \n", generation_island);
-        new_genome = generate_for_repopulating_island(rng_0_1, generator, mutate, crossover);
+        new_genome = generate_for_repopulating_island(rng_0_1, generator, mutate, crossover, weight_rules);
 
     } else {
         Log::fatal("ERROR: island was neither initializing, repopulating or full.\n");
@@ -238,7 +242,7 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_genome(uniform_real_distrib
 
     if (new_genome == NULL) {
         Log::info("Island %d: new genome is still null, regenerating\n", generation_island);
-        new_genome = generate_genome(rng_0_1, generator, mutate, crossover);
+        new_genome = generate_genome(rng_0_1, generator, mutate, crossover, weight_rules);
     }
     generated_genomes++;
     new_genome->set_generation_id(generated_genomes);
@@ -260,14 +264,14 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_genome(uniform_real_distrib
 }
 
 RNN_Genome* OneNasIslandSpeciationStrategy::generate_for_initializing_island(
-    uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate
+    uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules
 ) {
     OneNasIsland* current_island = islands[generation_island];
     RNN_Genome* new_genome = NULL;
     if (current_island->generated_size() == 0) {
         Log::info("Island %d: starting island with minimal genome\n", generation_island);
         new_genome = seed_genome->copy();
-        new_genome->initialize_randomly();
+        new_genome->initialize_randomly(weight_rules);
 
     } else {
         Log::info("Island %d: island is initializing but not empty, mutating a random genome\n", generation_island);
@@ -298,13 +302,13 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_for_filled_island(
     double r = rng_0_1(generator);
 
     if (!islands_full() || r < mutation_rate) {
-        Log::debug("performing mutation\n");
+        Log::info("performing mutation\n");
         island->copy_random_genome(rng_0_1, generator, &genome);
         mutate(num_mutations, genome);
 
     } else if (r < intra_island_crossover_rate || number_filled_islands() == 1) {
         // intra-island crossover
-        Log::debug("performing intra-island crossover\n");
+        Log::info("performing intra-island crossover\n");
         // select two distinct parent genomes in the same island
         RNN_Genome *parent1 = NULL, *parent2 = NULL;
         island->copy_two_random_genomes(rng_0_1, generator, &parent1, &parent2);
@@ -343,7 +347,7 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_for_filled_island(
 
 RNN_Genome* OneNasIslandSpeciationStrategy::generate_for_repopulating_island(
     uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate,
-    function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+    function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
 ) {
     Log::info("Island %d: island is repopulating \n", generation_island);
     // Island *current_island = islands[generation_island];
@@ -351,11 +355,11 @@ RNN_Genome* OneNasIslandSpeciationStrategy::generate_for_repopulating_island(
 
     if (repopulation_method.compare("randomParents") == 0 || repopulation_method.compare("randomparents") == 0) {
         Log::info("Island %d: island is repopulating through random parents method!\n", generation_island);
-        new_genome = parents_repopulation("randomParents", rng_0_1, generator, mutate, crossover);
+        new_genome = parents_repopulation("randomParents", rng_0_1, generator, mutate, crossover, weight_rules);
 
     } else if (repopulation_method.compare("bestParents") == 0 || repopulation_method.compare("bestparents") == 0) {
         Log::info("Island %d: island is repopulating through best parents method!\n", generation_island);
-        new_genome = parents_repopulation("bestParents", rng_0_1, generator, mutate, crossover);
+        new_genome = parents_repopulation("bestParents", rng_0_1, generator, mutate, crossover, weight_rules);
 
     } else if (repopulation_method.compare("bestGenome") == 0 || repopulation_method.compare("bestgenome") == 0) {
         new_genome = get_global_best_genome()->copy();
@@ -445,7 +449,7 @@ string OneNasIslandSpeciationStrategy::get_strategy_information_values() const {
 
 RNN_Genome* OneNasIslandSpeciationStrategy::parents_repopulation(
     string method, uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator,
-    function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+    function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
 ) {
     RNN_Genome* genome = NULL;
 
@@ -499,7 +503,7 @@ RNN_Genome* OneNasIslandSpeciationStrategy::parents_repopulation(
     if (genome->outputs_unreachable()) {
         // no path from at least one input to the outputs
         delete genome;
-        genome = generate_genome(rng_0_1, generator, mutate, crossover);
+        genome = generate_genome(rng_0_1, generator, mutate, crossover, weight_rules);
     }
     return genome;
 }
@@ -626,7 +630,7 @@ void OneNasIslandSpeciationStrategy::set_erased_islands_status() {
     }
 }
 
-void OneNasIslandSpeciationStrategy::initialize_population(function<void(int32_t, RNN_Genome*)>& mutate) {
+void OneNasIslandSpeciationStrategy::initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules) {
     for (int32_t i = 0; i < number_of_islands; i++) {
         OneNasIsland* new_island = new OneNasIsland(i, generated_population_size, elite_population_size);
         // if (start_filled) {
@@ -639,9 +643,16 @@ void OneNasIslandSpeciationStrategy::initialize_population(function<void(int32_t
 
 void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
     Log::info("ONENAS Speciation Strategy: Finalizing the generation\n");
-
+    // steps in finalize_generation:
+    // 1. evaluate_elite_population: update its fitness with most recent validation mse + sort the elite population
+    // 2. select_elite_population: insert the new generated population into the elite population. then clear the generated population
+    // 3. global_best_genome = select_global_best_genome(): select the best genome from all islands
+    // 4. write_global_best_prediction(filename, test_input, test_output);
+    // 5. save_entire_population(filename);
+    // 6. update_log();
     evaluate_elite_population(validation_input, validation_output);
     select_elite_population();
+    generation_check();
     global_best_genome = select_global_best_genome();
     write_global_best_prediction(filename, test_input, test_output);
 
@@ -672,6 +683,12 @@ void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const 
     current_generation ++;
 }
 
+void OneNasIslandSpeciationStrategy::generation_check() {
+    for (int i = 0; i < number_of_islands; i++) {
+        islands[i] -> generation_check();
+    }
+}
+
 int32_t OneNasIslandSpeciationStrategy::number_filled_islands() {
     int32_t n_filled = 0;
     
@@ -696,6 +713,14 @@ int32_t OneNasIslandSpeciationStrategy::get_other_full_island(
             Log::debug("\t %d\n", i);
         }
     }
+    
+    // Check if we have any other filled islands
+    if (other_filled_islands.size() == 0) {
+        Log::fatal("FATAL: No Other Filled Islands at this moment for inter-island crossover, this should not happen\n");
+        exit(1);
+        return -1; // Return error code
+    }
+    
     int32_t other_island = other_filled_islands[rng_0_1(generator) * other_filled_islands.size()];
     Log::debug("other island: %d\n", other_island);
     

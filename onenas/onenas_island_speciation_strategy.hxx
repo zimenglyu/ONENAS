@@ -161,13 +161,13 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
          *
          * \return the newly generated genome.
          */
-        RNN_Genome* generate_genome(uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, function<void (int32_t, RNN_Genome*)> &mutate,function<RNN_Genome* (RNN_Genome*, RNN_Genome *)> &crossover);
+        RNN_Genome* generate_genome(uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, function<void (int32_t, RNN_Genome*)> &mutate,function<RNN_Genome* (RNN_Genome*, RNN_Genome *)> &crossover, WeightRules* weight_rules);
 
-        RNN_Genome* generate_for_initializing_island(uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate);
+        RNN_Genome* generate_for_initializing_island(uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules);
 
         RNN_Genome* generate_for_filled_island(uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, function<void (int32_t, RNN_Genome*)> &mutate, function<RNN_Genome* (RNN_Genome*, RNN_Genome *)> &crossover);
 
-        RNN_Genome* generate_for_repopulating_island(uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover);
+        RNN_Genome* generate_for_repopulating_island(uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules);
 
         void repopulate_by_copy_island(int32_t best_island_id, function<void(int32_t, RNN_Genome*)>& mutate); 
         /**
@@ -191,7 +191,7 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
          * Island repopulation through two random parents from two seperate islands,
          * parents can be random genomes or best genome from the island
          */
-        RNN_Genome* parents_repopulation(string method,uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, function<void (int32_t, RNN_Genome*)> &mutate, function<RNN_Genome* (RNN_Genome*, RNN_Genome *)> &crossover);
+        RNN_Genome* parents_repopulation(string method,uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, function<void (int32_t, RNN_Genome*)> &mutate, function<RNN_Genome* (RNN_Genome*, RNN_Genome *)> &crossover, WeightRules* weight_rules);
 
         /**
          * fill a island with the best island.
@@ -224,7 +224,7 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         void select_elite_population();
         void clear_population();
 
-        void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate);
+        void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules);
         RNN_Genome* get_seed_genome();
         void save_entire_population(string output_path);
 
@@ -239,6 +239,8 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         int32_t get_other_full_island(
             uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, int32_t first_island
         ); 
+
+        void generation_check();
 };
 
 

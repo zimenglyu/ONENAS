@@ -68,7 +68,7 @@ class SpeciationStrategy {
      */
     virtual RNN_Genome* generate_genome(
         uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator,
-        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
     ) = 0;
 
     /**
@@ -89,7 +89,7 @@ class SpeciationStrategy {
     virtual string get_strategy_information_values() const = 0;
 
     virtual RNN_Genome* get_global_best_genome() = 0;
-    virtual void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate) = 0;
+    virtual void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules) = 0;
     virtual RNN_Genome* get_seed_genome() = 0;
     virtual void save_entire_population(string output_path) = 0;
 

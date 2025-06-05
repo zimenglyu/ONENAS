@@ -442,7 +442,7 @@ void Island::set_erase_again_num() {
 
 void Island::fill_with_mutated_genomes(
     RNN_Genome* seed_genome, int32_t num_mutations, bool tl_epigenetic_weights,
-    function<void(int32_t, RNN_Genome*)>& mutate
+    function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules
 ) {
     Log::info("Island %d: Filling island with mutated seed genomes\n", id);
     for (int32_t i = 0; i < max_size; i++) {
@@ -450,7 +450,7 @@ void Island::fill_with_mutated_genomes(
         mutate(num_mutations, seed_genome);
         new_genome->set_generation_id(0);
         if (tl_epigenetic_weights) {
-            new_genome->initialize_randomly();
+            new_genome->initialize_randomly(weight_rules);
         }
         genomes.push_back(new_genome);
     }

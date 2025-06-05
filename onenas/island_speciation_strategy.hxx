@@ -189,7 +189,7 @@ class IslandSpeciationStrategy : public SpeciationStrategy {
      */
     RNN_Genome* generate_genome(
         uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator,
-        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
     );
 
     RNN_Genome* generate_for_filled_island(
@@ -198,11 +198,12 @@ class IslandSpeciationStrategy : public SpeciationStrategy {
     );
     RNN_Genome* generate_for_initializing_island(
         uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator,
-        function<void(int32_t, RNN_Genome*)>& mutate
+        function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules
     );
     RNN_Genome* generate_for_repopulating_island(
         uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator,
-        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, 
+        WeightRules* weight_rules
     );
     /**
      * Prints out all the island's populations
@@ -227,7 +228,7 @@ class IslandSpeciationStrategy : public SpeciationStrategy {
      */
     RNN_Genome* parents_repopulation(
         string method, uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator,
-        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+        function<void(int32_t, RNN_Genome*)>& mutate, function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
     );
 
     /**
@@ -241,7 +242,7 @@ class IslandSpeciationStrategy : public SpeciationStrategy {
     RNN_Genome* get_seed_genome();
 
     void set_erased_islands_status();
-    void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate);
+    void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules);
     void repopulate();
 
     void save_entire_population(string output_path);

@@ -305,6 +305,10 @@ int main(int argc, char** argv) {
 
     WeightRules* weight_rules = new WeightRules();
     weight_rules->initialize_from_args(arguments);
+    if (weight_rules == NULL) {
+        Log::fatal("ERROR in onenas mpi: Failed to create weight rules, this should not happen\n");
+        exit(1);
+    }
     Log::major_divider(Log::INFO, "Created weight rules!");
 
     RNN_Genome* seed_genome = get_seed_genome(arguments, time_series_sets, weight_rules);
@@ -320,10 +324,11 @@ int main(int argc, char** argv) {
     for (int32_t  current_generation = 0; current_generation < num_sets; current_generation ++) {
         online_series->set_current_index(current_generation);
         // Log::info("current generation: %d\n", current_generation);
-        Log::minor_divider(Log::INFO);
-        Log::info("Current generation: %d \n", current_generation);
+
 
         if (rank ==0) {
+            Log::minor_divider(Log::INFO);
+            Log::info("Current generation: %d \n", current_generation);
             master(max_rank);           
         } else {
             worker(rank, online_series);
@@ -344,7 +349,7 @@ int main(int argc, char** argv) {
             for (int32_t  i = 0; i < (int32_t)validation_index.size(); i++) {
                 current_validation_inputs.push_back(time_series_inputs[validation_index[i]]);
                 current_validation_outputs.push_back(time_series_outputs[validation_index[i]]);
-                Log::info("validation index: %d\n", validation_index[i]);
+                Log::debug("validation index: %d\n", validation_index[i]);
             }
             Log::info("Current testing index: %d\n", test_index);
 

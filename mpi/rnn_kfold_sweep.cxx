@@ -428,7 +428,7 @@ ResultSet handle_job(int32_t rank, int32_t current_job) {
 
     vector<double> best_parameters;
 
-    genome->initialize_randomly();
+    genome->initialize_randomly(weight_rules);
     genome->set_bp_iterations(bp_iterations);
 
     string first_directory = output_directory + "/" + rnn_type;

@@ -62,19 +62,19 @@ int main(int argc, char** argv) {
 
         // Test 1 input, 1 output, no hidden
         genome = create_jordan(inputs1, 0, 0, outputs1, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 1 Input, 1 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 1 Input, 1 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         genome = create_jordan(inputs1, 1, 1, outputs1, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 1 Input, 1x1 Hidden, 1 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 1 Input, 1x1 Hidden, 1 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         genome = create_jordan(inputs1, 1, 2, outputs1, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 1 Input, 1x2 Hidden, 1 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 1 Input, 1x2 Hidden, 1 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         genome = create_jordan(inputs1, 2, 2, outputs1, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 1 Input, 2x2 Hidden, 1 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 1 Input, 2x2 Hidden, 1 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         vector<string> inputs2{"input 1", "input 2"};
@@ -90,19 +90,19 @@ int main(int argc, char** argv) {
         generate_random_vector(input_length, inputs[1]);
         generate_random_vector(input_length, outputs[1]);
 
-        gradient_test("JORDAN: 2 Input, 2 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 2 Input, 2 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         genome = create_jordan(inputs2, 2, 2, outputs2, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 2 Input, 2x2 Hidden, 2 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 2 Input, 2x2 Hidden, 2 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         genome = create_jordan(inputs2, 2, 3, outputs2, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 2 Input, 2x3 Hidden, 2 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 2 Input, 2x3 Hidden, 2 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         genome = create_jordan(inputs2, 3, 3, outputs2, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 2 Input, 3x3 Hidden, 2 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 2 Input, 3x3 Hidden, 2 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         vector<string> inputs3{"input 1", "input 2", "input 3"};
@@ -120,19 +120,19 @@ int main(int argc, char** argv) {
         generate_random_vector(input_length, inputs[2]);
         generate_random_vector(input_length, outputs[2]);
 
-        gradient_test("JORDAN: Three Input, Three Output", genome, inputs, outputs);
+        gradient_test("JORDAN: Three Input, Three Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         genome = create_jordan(inputs3, 3, 3, outputs3, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 3 Input, 3x3 Hidden, 3 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 3 Input, 3x3 Hidden, 3 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         genome = create_jordan(inputs3, 3, 4, outputs3, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 3 Input, 3x4 Hidden, 3 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 3 Input, 3x4 Hidden, 3 Output", genome, inputs, outputs, weight_rules);
         delete genome;
 
         genome = create_jordan(inputs3, 4, 4, outputs3, max_recurrent_depth, weight_rules);
-        gradient_test("JORDAN: 3 Input, 4x4 Hidden, 3 Output", genome, inputs, outputs);
+        gradient_test("JORDAN: 3 Input, 4x4 Hidden, 3 Output", genome, inputs, outputs, weight_rules);
         delete genome;
     }
 }

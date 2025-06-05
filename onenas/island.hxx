@@ -204,7 +204,7 @@ class Island {
 
     void fill_with_mutated_genomes(
         RNN_Genome* seed_genome, int32_t num_mutations, bool tl_epigenetic_weights,
-        function<void(int32_t, RNN_Genome*)>& mutate
+        function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules
     );
 
     void save_population(string output_path);

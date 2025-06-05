@@ -173,7 +173,7 @@ RNN_Genome* create_nn(
         }
     }
 
-    RNN_Genome* genome = new RNN_Genome(rnn_nodes, rnn_edges, recurrent_edges, weight_rules);
+    RNN_Genome* genome = new RNN_Genome(rnn_nodes, rnn_edges, recurrent_edges);
     genome->set_parameter_names(input_parameter_names, output_parameter_names);
     return genome;
 }
@@ -225,7 +225,7 @@ RNN_Genome* get_seed_genome(
         Log::info("Transfering seed genome\n");
         seed_genome->transfer_to(
             time_series_sets->get_input_parameter_names(), time_series_sets->get_output_parameter_names(),
-            transfer_learning_version, epigenetic_weights, min_recurrent_depth, max_recurrent_depth
+            transfer_learning_version, epigenetic_weights, min_recurrent_depth, max_recurrent_depth, weight_rules
         );
         Log::info("Finished transfering seed genome\n");
     } else {
@@ -234,7 +234,7 @@ RNN_Genome* get_seed_genome(
                 time_series_sets->get_input_parameter_names(), 0, 0, time_series_sets->get_output_parameter_names(), 0,
                 weight_rules
             );
-            seed_genome->initialize_randomly();
+            seed_genome->initialize_randomly(weight_rules);
             Log::info("Generated seed genome, seed genome is minimal\n");
         }
     }

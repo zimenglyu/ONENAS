@@ -34,6 +34,7 @@ vector<vector<vector<double> > > test_outputs;
 RNN_Genome* genome;
 RNN* rnn;
 WeightUpdate* weight_update_method;
+WeightRules* weight_rules;
 
 bool using_dropout;
 double dropout_probability;
@@ -146,7 +147,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    RNN_Genome* genome = new RNN_Genome(rnn_nodes, rnn_edges, recurrent_edges, weight_rules);
+    RNN_Genome* genome = new RNN_Genome(rnn_nodes, rnn_edges, recurrent_edges);
 
     genome->set_parameter_names(
         time_series_sets->get_input_parameter_names(), time_series_sets->get_output_parameter_names()
@@ -169,7 +170,7 @@ int main(int argc, char** argv) {
 
     using_dropout = false;
 
-    genome->initialize_randomly();
+    genome->initialize_randomly(weight_rules);
 
     int32_t bp_iterations;
     get_argument(arguments, "--bp_iterations", true, bp_iterations);

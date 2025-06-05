@@ -78,13 +78,12 @@ class EXAMM {
     string save_genome_option;
 
     bool generate_op_log;
-    bool generate_visualization_json;
 
    public:
     EXAMM(
         int32_t _island_size, int32_t _number_islands, int32_t _max_genomes, SpeciationStrategy* _speciation_strategy,
         WeightRules* _weight_rules, GenomeProperty* _genome_property, string _output_directory,
-        string _save_genome_option, bool _generate_op_log, bool _generate_visualization_json
+        string _save_genome_option, bool _generate_op_log
     );
 
     ~EXAMM();
@@ -121,7 +120,6 @@ class EXAMM {
     RNN_Genome* get_best_genome();
     RNN_Genome* get_worst_genome();
 
-    void save_visualization_json(RNN_Genome* genome, string genome_name);
     void save_genome(RNN_Genome* genome, string genome_name);
 
     string get_output_directory() const;

@@ -214,6 +214,8 @@ class OneNasIsland {
         void write_prediction(string filename, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);
 
         void save_entire_population(string output_path);
+
+        void generation_check();
 };
 
 #endif

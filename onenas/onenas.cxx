@@ -26,6 +26,8 @@ using std::uniform_real_distribution;
 using std::string;
 using std::to_string;
 
+#include <cassert>
+
 #include "common/files.hxx"
 #include "common/log.hxx"
 #include "onenas.hxx"
@@ -73,6 +75,7 @@ ONENAS::ONENAS(
     set_evolution_hyper_parameters();
     initialize_seed_genome();
     // make sure we don't duplicate node or edge innovation numbers
+    weight_rules->print_weight_rules();
 
     function<void(int32_t, RNN_Genome*)> mutate_function = [=, this](int32_t max_mutations, RNN_Genome* genome) {
         this->mutate(max_mutations, genome);
@@ -80,7 +83,7 @@ ONENAS::ONENAS(
 
     Log::info("Finished initializing, now start ONENAS evolution\n");
 
-    speciation_strategy->initialize_population(mutate_function);
+    speciation_strategy->initialize_population(mutate_function, weight_rules);
     generate_log();
     startClock = std::chrono::system_clock::now();
 }
@@ -231,16 +234,6 @@ void ONENAS::save_genome(RNN_Genome* genome, string genome_name = "rnn_genome") 
 }
 
 RNN_Genome* ONENAS::generate_genome() {
-    Log::info("ONENAS:Generating genome\n");
-    // if (speciation_strategy->get_evaluated_genomes() > max_genomes) {
-    //     RNN_Genome* global_best_genome = speciation_strategy->get_global_best_genome();
-    //     save_genome(global_best_genome, "global_best_genome");
-
-    //     if (save_genome_option.compare("entire_population") == 0) {
-    //         speciation_strategy->save_entire_population(output_directory);
-    //     }
-    //     return NULL;
-    // }
 
     function<void(int32_t, RNN_Genome*)> mutate_function = [=, this](int32_t max_mutations, RNN_Genome* genome) {
         this->mutate(max_mutations, genome);
@@ -249,7 +242,7 @@ RNN_Genome* ONENAS::generate_genome() {
     function<RNN_Genome*(RNN_Genome*, RNN_Genome*)> crossover_function =
         [=, this](RNN_Genome* parent1, RNN_Genome* parent2) { return this->crossover(parent1, parent2); };
 
-    RNN_Genome* genome = speciation_strategy->generate_genome(rng_0_1, generator, mutate_function, crossover_function);
+    RNN_Genome* genome = speciation_strategy->generate_genome(rng_0_1, generator, mutate_function, crossover_function, weight_rules);
 
     genome_property->set_genome_properties(genome);
     // if (!epigenetic_weights) genome->initialize_randomly();
@@ -259,7 +252,7 @@ RNN_Genome* ONENAS::generate_genome() {
     Log::debug("getting mu/sigma after random initialization of copy!\n");
     double _mu, _sigma;
     genome->get_mu_sigma(genome->best_parameters, _mu, _sigma);
-
+    // assert (genome->weight_rules!=NULL);
     return genome;
 }
 
@@ -315,7 +308,7 @@ void ONENAS::mutate(int32_t max_mutations, RNN_Genome* g) {
         }
         rng -= clone_rate;
         if (rng < add_edge_rate) {
-            modified = g->add_edge(mu, sigma, edge_innovation_count);
+            modified = g->add_edge(mu, sigma, edge_innovation_count, weight_rules);
             Log::debug("\tadding edge, modified: %d\n", modified);
             if (modified) {
                 g->set_generated_by("add_edge");
@@ -326,7 +319,7 @@ void ONENAS::mutate(int32_t max_mutations, RNN_Genome* g) {
 
         if (rng < add_recurrent_edge_rate) {
             uniform_int_distribution<int32_t> dist = genome_property->get_recurrent_depth_dist();
-            modified = g->add_recurrent_edge(mu, sigma, dist, edge_innovation_count);
+            modified = g->add_recurrent_edge(mu, sigma, dist, edge_innovation_count, weight_rules);
             Log::debug("\tadding recurrent edge, modified: %d\n", modified);
             if (modified) {
                 g->set_generated_by("add_recurrent_edge");
@@ -336,7 +329,7 @@ void ONENAS::mutate(int32_t max_mutations, RNN_Genome* g) {
         rng -= add_recurrent_edge_rate;
 
         if (rng < enable_edge_rate) {
-            modified = g->enable_edge();
+            modified = g->enable_edge(weight_rules);
             Log::debug("\tenabling edge, modified: %d\n", modified);
             if (modified) {
                 g->set_generated_by("enable_edge");
@@ -357,7 +350,7 @@ void ONENAS::mutate(int32_t max_mutations, RNN_Genome* g) {
 
         if (rng < split_edge_rate) {
             uniform_int_distribution<int32_t> dist = genome_property->get_recurrent_depth_dist();
-            modified = g->split_edge(mu, sigma, new_node_type, dist, edge_innovation_count, node_innovation_count);
+            modified = g->split_edge(mu, sigma, new_node_type, dist, edge_innovation_count, node_innovation_count, weight_rules);
             Log::debug("\tsplitting edge, modified: %d\n", modified);
             if (modified) {
                 g->set_generated_by("split_edge(" + node_type_str + ")");
@@ -368,7 +361,7 @@ void ONENAS::mutate(int32_t max_mutations, RNN_Genome* g) {
 
         if (rng < add_node_rate) {
             uniform_int_distribution<int32_t> dist = genome_property->get_recurrent_depth_dist();
-            modified = g->add_node(mu, sigma, new_node_type, dist, edge_innovation_count, node_innovation_count);
+            modified = g->add_node(mu, sigma, new_node_type, dist, edge_innovation_count, node_innovation_count, weight_rules);
             Log::debug("\tadding node, modified: %d\n", modified);
             if (modified) {
                 g->set_generated_by("add_node(" + node_type_str + ")");
@@ -378,7 +371,7 @@ void ONENAS::mutate(int32_t max_mutations, RNN_Genome* g) {
         rng -= add_node_rate;
 
         if (rng < enable_node_rate) {
-            modified = g->enable_node();
+            modified = g->enable_node(weight_rules);
             Log::debug("\tenabling node, modified: %d\n", modified);
             if (modified) {
                 g->set_generated_by("enable_node");
@@ -399,7 +392,7 @@ void ONENAS::mutate(int32_t max_mutations, RNN_Genome* g) {
 
         if (rng < split_node_rate) {
             uniform_int_distribution<int32_t> dist = genome_property->get_recurrent_depth_dist();
-            modified = g->split_node(mu, sigma, new_node_type, dist, edge_innovation_count, node_innovation_count);
+            modified = g->split_node(mu, sigma, new_node_type, dist, edge_innovation_count, node_innovation_count, weight_rules);
             Log::debug("\tsplitting node, modified: %d\n", modified);
             if (modified) {
                 g->set_generated_by("split_node(" + node_type_str + ")");
@@ -410,7 +403,7 @@ void ONENAS::mutate(int32_t max_mutations, RNN_Genome* g) {
 
         if (rng < merge_node_rate) {
             uniform_int_distribution<int32_t> dist = genome_property->get_recurrent_depth_dist();
-            modified = g->merge_node(mu, sigma, new_node_type, dist, edge_innovation_count, node_innovation_count);
+            modified = g->merge_node(mu, sigma, new_node_type, dist, edge_innovation_count, node_innovation_count, weight_rules);
             Log::debug("\tmerging node, modified: %d\n", modified);
             if (modified) {
                 g->set_generated_by("merge_node(" + node_type_str + ")");
@@ -851,7 +844,7 @@ RNN_Genome* ONENAS::crossover(RNN_Genome* p1, RNN_Genome* p2) {
     sort(child_edges.begin(), child_edges.end(), sort_RNN_Edges_by_depth());
     sort(child_recurrent_edges.begin(), child_recurrent_edges.end(), sort_RNN_Recurrent_Edges_by_depth());
 
-    RNN_Genome* child = new RNN_Genome(child_nodes, child_edges, child_recurrent_edges, weight_rules);
+    RNN_Genome* child = new RNN_Genome(child_nodes, child_edges, child_recurrent_edges);
     genome_property->set_genome_properties(child);
     // child->set_parameter_names(input_parameter_names, output_parameter_names);
     // child->set_normalize_bounds(normalize_type, normalize_mins, normalize_maxs, normalize_avgs, normalize_std_devs);
@@ -875,7 +868,7 @@ RNN_Genome* ONENAS::crossover(RNN_Genome* p1, RNN_Genome* p2) {
             "weight inheritance at crossover method is %s, setting weights to %s randomly \n",
             WEIGHT_TYPES_STRING[weight_inheritance].c_str(), WEIGHT_TYPES_STRING[weight_inheritance].c_str()
         );
-        child->initialize_randomly();
+        child->initialize_randomly(weight_rules);
     }
 
     child->get_weights(new_parameters);
@@ -987,5 +980,6 @@ void ONENAS::set_evolution_hyper_parameters() {
 void ONENAS::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
     Log::info("ONENAS:Finalizing generation %d\n", current_generation);
     string filename = output_directory + "/generation_" + std::to_string(current_generation);
+
     speciation_strategy->finalize_generation(filename, validation_input, validation_output, test_input, test_output);
 }

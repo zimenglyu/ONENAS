@@ -225,7 +225,7 @@ int32_t NeatSpeciationStrategy::insert_genome(RNN_Genome* genome) {
 
 RNN_Genome* NeatSpeciationStrategy::generate_genome(
     uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate,
-    function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover
+    function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
 ) {
     // generate the genome from the next island in a round
     // robin fashion.
@@ -558,7 +558,7 @@ RNN_Genome* NeatSpeciationStrategy::get_seed_genome() {
     return seed_genome;
 }
 
-void NeatSpeciationStrategy::initialize_population(function<void(int32_t, RNN_Genome*)>& mutate) {
+void NeatSpeciationStrategy::initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules) {
 }
 
 void NeatSpeciationStrategy::save_entire_population(string output_path) {

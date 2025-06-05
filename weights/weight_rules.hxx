@@ -46,13 +46,14 @@ class WeightRules {
     WeightType get_weight_inheritance_method();
     WeightType get_mutated_components_weight_method();
 
-    string get_weight_initialize_method_name();
-    string get_weight_inheritance_method_name();
-    string get_mutated_components_weight_method_name();
+    string get_weight_initialize_method_name() const;
+    string get_weight_inheritance_method_name() const;
+    string get_mutated_components_weight_method_name() const;
 
     void set_weight_initialize_method(WeightType _weight_initialize);
     void set_weight_inheritance_method(WeightType _weight_inheritance);
     void set_mutated_components_weight_method(WeightType _mutated_components_weight);
+    void print_weight_rules() const;
     WeightRules* copy();
 };
 

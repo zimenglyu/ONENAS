@@ -94,6 +94,7 @@ void Population::copy_random_genome(uniform_real_distribution<double> &rng_0_1, 
     Log::debug("Copying genome at position %d from population (type: %d, island: %d), generation_id: %d\n", 
                genome_position, population_type, island_id, genomes[genome_position]->get_generation_id());
     
+    // assert (genomes[genome_position]->get_weight_rules()!=NULL);
     *genome = genomes[genome_position]->copy();
 }
 
@@ -125,9 +126,8 @@ void Population::copy_two_random_genomes(uniform_real_distribution<double> &rng_
 //pointer
 int32_t Population::insert_genome(RNN_Genome *genome) {
     int32_t initial_size = (int32_t)genomes.size();
-    Log::info("inserting genomes to population %d, genome size is %d\n", population_type, genomes.size());
+    Log::info("inserting genome to island %d, population %s\n", island_id, population_type == GENERATED ? "generated" : "elite");
     Log::debug("getting fitness of genome copy\n");
-
     double new_fitness = genome->get_fitness();
 
     //discard the genome if the island is full and it's fitness is worse than the worst in thte population
@@ -184,7 +184,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
 
                     genomes.erase(genomes.begin() + duplicate_genome_index);
 
-                    Log::info("potential_matches.size() before erase: %d\n", potential_matches.size());
+                    Log::debug("potential_matches.size() before erase: %d\n", potential_matches.size());
 
                     //erase the potential match from the structure map as well
                     //returns an iterator to next element after the deleted one so
@@ -193,8 +193,8 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
 
                     delete duplicate;
 
-                    Log::info("potential_matches.size() after erase: %d\n", potential_matches.size());
-                    Log::info("structure_map[%s].size() after erase: %d\n", structural_hash.c_str(), structure_map[structural_hash].size());
+                    Log::debug("potential_matches.size() after erase: %d\n", potential_matches.size());
+                    Log::debug("structure_map[%s].size() after erase: %d\n", structural_hash.c_str(), structure_map[structural_hash].size());
 
                     if (potential_matches.size() == 0) {
                         Log::info("deleting the potential_matches vector for hash '%s' because it was empty.\n", structural_hash.c_str());
@@ -216,6 +216,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
 
     //inorder insert the new individual
     RNN_Genome *copy = genome->copy();
+
     vector<double> best = copy -> get_best_parameters();
     if(best.size() != 0){
         copy->set_weights(best);
@@ -242,7 +243,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
     structural_hash = copy->get_structural_hash();
     //add the genome to the vector for this structural hash
     structure_map[structural_hash].push_back(copy);
-    Log::info("adding to structure_map[%s] : %p\n", structural_hash.c_str(), &copy);
+    Log::debug("adding to structure_map[%s] : %p\n", structural_hash.c_str(), &copy);
 
     if (insert_index == 0) {
         //this was a new best genome for this island
@@ -276,13 +277,13 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
             Log::info("checking to remove worst from structure_map - &worst: %p, &(*potential_match): %p\n", worst, (*potential_match));
             if ((*potential_match) == worst) {
                 found = true;
-                Log::info("potential_matches.size() before erase: %d\n", potential_matches.size());
+                Log::debug("potential_matches.size() before erase: %d\n", potential_matches.size());
 
                 //erase the potential match from the structure map as well
                 potential_match = potential_matches.erase(potential_match);
 
-                Log::info("potential_matches.size() after erase: %d\n", potential_matches.size());
-                Log::info("structure_map[%s].size() after erase: %d\n", structural_hash.c_str(), structure_map[structural_hash].size());
+                Log::debug("potential_matches.size() after erase: %d\n", potential_matches.size());
+                Log::debug("structure_map[%s].size() after erase: %d\n", structural_hash.c_str(), structure_map[structural_hash].size());
 
                 //clean up the structure_map if no genomes in the population have this hash
                 if (potential_matches.size() == 0) {
