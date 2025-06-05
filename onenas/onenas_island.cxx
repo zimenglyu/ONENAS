@@ -109,7 +109,6 @@ void OneNasIsland::copy_random_genome(uniform_real_distribution<double> &rng_0_1
     if (elite_size() > 0) {
         Log::info("Island %d: copying random genome from elite population\n", id);
         elite_population->copy_random_genome(rng_0_1, generator, genome);
-
     } else if (generated_size() > 0) {
         Log::info("Island %d: copying random genome from generated population\n", id);
         generated_population->copy_random_genome(rng_0_1, generator, genome);

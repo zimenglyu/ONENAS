@@ -86,6 +86,7 @@ void Population::copy_random_genome(uniform_real_distribution<double> &rng_0_1, 
     }
     
     assert (genomes[genome_position]!=NULL);
+    Log::info("[DEBUG] About to copy genome at %p in copy_random_genome, population_type: %d, island_id: %d\n", genomes[genome_position], population_type, island_id);
     *genome = genomes[genome_position]->copy();
 }
 
@@ -108,9 +109,10 @@ void Population::copy_two_random_genomes(uniform_real_distribution<double> &rng_
     }
     assert (genomes[p1]!=NULL);
     assert (genomes[p2]!=NULL);
+    Log::info("[DEBUG] About to copy genome at %p in copy_two_random_genomes (1), population_type: %d, island_id: %d\n", genomes[p1], population_type, island_id);
+    Log::info("[DEBUG] About to copy genome at %p in copy_two_random_genomes (2), population_type: %d, island_id: %d\n", genomes[p2], population_type, island_id);
     *genome1 = genomes[p1]->copy();
     *genome2 = genomes[p2]->copy();
-
 }
 
 
@@ -184,6 +186,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
                     //we don't need to increment it
                     potential_match = potential_matches.erase(potential_match);
 
+                    Log::info("[DEBUG] About to delete genome at %p in insert_genome (duplicate removal)\n", duplicate);
                     delete duplicate;
 
                     Log::debug("potential_matches.size() after erase: %d\n", potential_matches.size());
@@ -208,6 +211,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
     }
 
     //inorder insert the new individual
+    Log::info("[DEBUG] About to copy genome at %p in insert_genome (inorder insert)\n", genome);
     RNN_Genome *copy = genome->copy();
 
     vector<double> best = copy -> get_best_parameters();
@@ -224,7 +228,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
         //if we're going to insert this at the back of the population
         //its just going to get removed anyways, so we can delete 
         //it and report it was not inserted.
-        Log::info("not inserting genome because it is worse than the worst fitness\n");
+        Log::info("[DEBUG] About to delete genome at %p in insert_genome (not inserted, worse than worst)\n", copy);
         delete copy;
         // do_population_check(__LINE__, initial_size);
         return -1;
@@ -294,6 +298,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
             exit(1);
         }
 
+        Log::info("[DEBUG] About to delete genome at %p in insert_genome (deleting worst)\n", worst);
         delete worst;
     }
 

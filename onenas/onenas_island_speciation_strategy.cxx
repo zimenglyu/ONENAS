@@ -138,6 +138,7 @@ int32_t OneNasIslandSpeciationStrategy::insert_genome(RNN_Genome* genome) {
         new_global_best = true;
     } else if (global_best_genome->get_fitness() > genome->get_fitness()) {
         //since we're re-setting this to a copy you need to delete it.
+        Log::info("[DEBUG] About to delete global_best_genome at %p in insert_genome\n", global_best_genome);
         delete global_best_genome;
         global_best_genome = genome->copy();
         new_global_best = true;
@@ -146,7 +147,9 @@ int32_t OneNasIslandSpeciationStrategy::insert_genome(RNN_Genome* genome) {
     evaluated_genomes++;
     int32_t island = genome->get_group_id();
 
+    Log::info("[DEBUG] About to call insert_genome with genome at %p (group_id: %d)\n", genome, genome->get_group_id());
     int32_t insert_position = islands[island]->insert_genome(genome);
+    Log::info("[DEBUG] Finished call to insert_genome with genome at %p (group_id: %d), insert_position: %d\n", genome, genome->get_group_id(), insert_position);
 
 
     if (insert_position == 0) {
