@@ -131,18 +131,18 @@ bool OneNasIslandSpeciationStrategy::islands_full() const {
 //returns 0 if a new global best, < 0 if not inserted, > 0 otherwise
 int32_t OneNasIslandSpeciationStrategy::insert_genome(RNN_Genome* genome) {
 
-    bool new_global_best = false;
-    if (global_best_genome == NULL) {
-        //this is the first insert of a genome so it's the global best by default
-        global_best_genome = genome->copy();
-        new_global_best = true;
-    } else if (global_best_genome->get_fitness() > genome->get_fitness()) {
-        //since we're re-setting this to a copy you need to delete it.
-        Log::info("[DEBUG] About to delete global_best_genome at %p in insert_genome\n", global_best_genome);
-        delete global_best_genome;
-        global_best_genome = genome->copy();
-        new_global_best = true;
-    }
+    // bool new_global_best = false;
+    // if (global_best_genome == NULL) {
+    //     //this is the first insert of a genome so it's the global best by default
+    //     global_best_genome = genome->copy();
+    //     new_global_best = true;
+    // } else if (global_best_genome->get_fitness() > genome->get_fitness()) {
+    //     //since we're re-setting this to a copy you need to delete it.
+    //     Log::info("[DEBUG] About to delete global_best_genome at %p in insert_genome\n", global_best_genome);
+    //     delete global_best_genome;
+    //     global_best_genome = genome->copy();
+    //     new_global_best = true;
+    // }
 
     evaluated_genomes++;
     int32_t island = genome->get_group_id();
@@ -151,13 +151,13 @@ int32_t OneNasIslandSpeciationStrategy::insert_genome(RNN_Genome* genome) {
     int32_t insert_position = islands[island]->insert_genome(genome);
     Log::info("[DEBUG] Finished call to insert_genome with genome at %p (group_id: %d), insert_position: %d\n", genome, genome->get_group_id(), insert_position);
 
-
-    if (insert_position == 0) {
-        if (new_global_best) return 0;
-        else return 1;
-    } else {
-        return insert_position; //will be -1 if not inserted, or > 0 if not the global best
-    }
+    return insert_position;
+    // if (insert_position == 0) {
+    //     if (new_global_best) return 0;
+    //     else return 1;
+    // } else {
+    //     return insert_position; //will be -1 if not inserted, or > 0 if not the global best
+    // }
 }
 
 int32_t OneNasIslandSpeciationStrategy::get_worst_island_by_best_genome() {
