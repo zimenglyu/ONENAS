@@ -564,5 +564,5 @@ void NeatSpeciationStrategy::initialize_population(function<void(int32_t, RNN_Ge
 void NeatSpeciationStrategy::save_entire_population(string output_path) {
 }
 
-void NeatSpeciationStrategy::finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
+void NeatSpeciationStrategy::finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) {
 }

@@ -218,10 +218,11 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
 
         void set_erased_islands_status();
         
-        void finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);
+        void finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids);
 
         void evaluate_elite_population(const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output);
         void select_elite_population();
+        void get_elite_population_ids(vector<int32_t>& good_genome_ids);
         void clear_population();
 
         void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules);

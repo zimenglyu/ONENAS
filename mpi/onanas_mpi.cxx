@@ -123,7 +123,27 @@ void receive_terminate_message(int32_t source) {
     MPI_Recv(terminate_message, 1, MPI_INT, source, TERMINATE_TAG, MPI_COMM_WORLD, &status);
 }
 
-void master(int32_t max_rank) {
+void populate_current_time_series_data(
+    const vector<int32_t>& train_index,
+    const vector<int32_t>& validation_index,
+    vector<vector<vector<double>>>& current_training_inputs,
+    vector<vector<vector<double>>>& current_training_outputs,
+    vector<vector<vector<double>>>& current_validation_inputs,
+    vector<vector<vector<double>>>& current_validation_outputs
+) {
+    for (int32_t i = 0; i < (int32_t)train_index.size(); i++) {
+        current_training_inputs.push_back(time_series_inputs[train_index[i]]);
+        current_training_outputs.push_back(time_series_outputs[train_index[i]]);
+        Log::info("Worker: training index: %d\n", train_index[i]);
+    }
+    for (int32_t i = 0; i < (int32_t)validation_index.size(); i++) {
+        current_validation_inputs.push_back(time_series_inputs[validation_index[i]]);
+        current_validation_outputs.push_back(time_series_outputs[validation_index[i]]);
+        Log::info("Worker: validation index: %d\n", validation_index[i]);
+    }
+}
+
+void master(int32_t max_rank, OnlineSeries* online_series) {
     // the "main" id will have already been set by the main function so we do not need to re-set it here
     Log::debug("MAX int32_t: %d\n", numeric_limits<int32_t>::max());
 
@@ -149,7 +169,15 @@ void master(int32_t max_rank) {
                 onenas_mutex.unlock();
 
                 if (genome != NULL) {
-                    Log::info("genome is not null, Sending genome to worker: %d\n", source);
+                    // Master generates training indices with updated scores
+                    vector<int32_t> master_training_index;
+                    online_series->get_training_index(master_training_index);
+                    
+                    // Attach training indices to genome before sending to worker
+                    genome->set_training_indices(master_training_index);
+                    
+                    Log::info("Master: Generated %d training indices for genome %d, sending to worker: %d\n", 
+                             master_training_index.size(), genome->get_generation_id(), source);
                     Log::debug("sending genome to: %d\n", source);
                     send_genome_to(source, genome);
 
@@ -175,6 +203,15 @@ void master(int32_t max_rank) {
         } else if (tag == GENOME_LENGTH_TAG) {
             Log::debug("received genome from: %d\n", source);
             RNN_Genome* genome = receive_genome_from(source);
+
+            // Extract training indices from the genome and add to master's OnlineSeries
+            vector<int32_t> training_indices = genome->get_training_indices();
+            int32_t generation_id = genome->get_generation_id();
+            if (!training_indices.empty()) {
+                online_series->add_training_history(generation_id, training_indices);
+                Log::debug("Master: added training indices of size %d for generation %d\n", 
+                          training_indices.size(), generation_id);
+            }
 
             onenas_mutex.lock();
             onenas->insert_genome(genome);
@@ -219,27 +256,30 @@ void worker(int32_t rank, OnlineSeries* online_series) {
             vector< vector< vector<double> > > current_validation_inputs;
             vector< vector< vector<double> > > current_validation_outputs;
 
-            vector<int32_t> train_index = online_series->get_training_index();
-            vector<int32_t> validation_index = online_series->get_validation_index();
+            // Use training indices provided by master (attached to genome)
+            vector<int32_t> train_index = genome->get_training_indices();
+            vector<int32_t> validation_index;
 
-            for ( int32_t  i = 0; i < (int32_t)train_index.size(); i++) {
-                current_training_inputs.push_back(time_series_inputs[train_index[i]]);
-                current_training_outputs.push_back(time_series_outputs[train_index[i]]);
-                Log::debug("Worker: training index: %d\n", train_index[i]);
-            }
-            for (int32_t  i = 0; i < (int32_t)validation_index.size(); i++) {
-                current_validation_inputs.push_back(time_series_inputs[validation_index[i]]);
-                current_validation_outputs.push_back(time_series_outputs[validation_index[i]]);
-                Log::debug("Worker: validation index: %d\n", validation_index[i]);
-            }
+            // Still generate validation indices locally (these don't need score-based prioritization)
+            online_series->get_validation_index(validation_index);
+
+            Log::info("Worker %d: Using %d training indices provided by master for genome %d\n", 
+                     rank, train_index.size(), genome->get_generation_id());
+
+            populate_current_time_series_data(
+                train_index, validation_index, current_training_inputs, current_training_outputs, current_validation_inputs, current_validation_outputs
+            );
 
             //have each worker write the backproagation to a separate log file
             string log_id = "genome_" + to_string(genome->get_generation_id()) + "_worker_" + to_string(rank);
             Log::set_id(log_id);
             genome->backpropagate_stochastic(current_training_inputs, current_training_outputs, current_validation_inputs, current_validation_outputs, weight_update_method);
-            // genome->set_genome_type(GENERATED);
             genome->evaluate_online(current_validation_inputs, current_validation_outputs);
             Log::release_id(log_id);
+
+            // Training indices were already set by master and used for training
+            // No need to call add_training_history here since master will handle it
+            // No need to set_training_indices again since they're already attached
 
             // go back to the worker's log for MPI communication
             Log::set_id("worker_" + to_string(rank));
@@ -327,15 +367,17 @@ int main(int argc, char** argv) {
 
 
         if (rank ==0) {
-            Log::minor_divider(Log::INFO);
+            Log::major_divider(Log::INFO, "New generation");
             Log::info("Current generation: %d \n", current_generation);
-            master(max_rank);           
+            master(max_rank, online_series);           
         } else {
             worker(rank, online_series);
         }
         MPI_Barrier(MPI_COMM_WORLD);
         if (rank == 0) {
-            vector <int32_t> validation_index = online_series->get_validation_index();
+            Log::minor_divider(Log::INFO);
+            vector <int32_t> validation_index;
+            online_series->get_validation_index(validation_index);
             int32_t test_index = online_series->get_test_index();
 
             vector< vector< vector<double> > > current_test_inputs;
@@ -353,9 +395,12 @@ int main(int argc, char** argv) {
             }
             Log::info("Current testing index: %d\n", test_index);
 
-            onenas->finalize_generation(current_generation, current_validation_inputs, current_validation_outputs, current_test_inputs, current_test_outputs);
+            vector<int32_t> good_genome_ids;
+            onenas->finalize_generation(current_generation, current_validation_inputs, current_validation_outputs, current_test_inputs, current_test_outputs, good_genome_ids);
+            online_series->update_scores(good_genome_ids, current_generation);
+            online_series->print_scores();
             onenas->update_log();
-
+            Log::info("Generation %d finished\n", current_generation);
         }
 
 

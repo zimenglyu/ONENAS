@@ -28,8 +28,8 @@ mpirun -np 2 ./mpi/onanas_mpi \
 --num_mutations 2 \
 --time_series_length 50 \
 --num_validataion_sets 10 \
---num_training_sets 50  \
---get_train_data_by v1 \
+--num_training_sets 20  \
+--get_train_data_by PER \
 --speciation_method onenas \
 --generated_population_size 10 \
 --elite_population_size 5 \
@@ -37,3 +37,5 @@ mpirun -np 2 ./mpi/onanas_mpi \
 --possible_node_types simple UGRNN MGU GRU delta LSTM \
 --std_message_level INFO \
 --file_message_level NONE
+
+# --start_score_tracking_generation 10 \

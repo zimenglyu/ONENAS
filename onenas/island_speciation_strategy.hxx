@@ -247,7 +247,7 @@ class IslandSpeciationStrategy : public SpeciationStrategy {
 
     void save_entire_population(string output_path);
 
-    void finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);
+    void finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids);
 
 };
 

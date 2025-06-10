@@ -160,6 +160,13 @@ int32_t OneNasIsland::insert_genome(RNN_Genome *genome) {
     return insert_position;
 }
 
+void OneNasIsland::get_elite_population_ids(vector<int32_t>& good_genome_ids) {
+    vector<RNN_Genome*> elite_genomes = elite_population->get_genomes();
+    for (int32_t i = 0; i < (int32_t)elite_genomes.size(); i++) {
+        good_genome_ids.push_back(elite_genomes[i]->get_generation_id());
+    }
+}
+
 // void OneNasIsland::print(string indent) {
 //     if (Log::at_level(Log::INFO)) {
 

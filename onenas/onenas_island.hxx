@@ -216,6 +216,8 @@ class OneNasIsland {
         void save_entire_population(string output_path);
 
         void generation_check();
+
+        void get_elite_population_ids(vector<int32_t>& good_genome_ids);
 };
 
 #endif

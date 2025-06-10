@@ -26,8 +26,6 @@ using std::uniform_real_distribution;
 using std::string;
 using std::to_string;
 
-#include <cassert>
-
 #include "common/files.hxx"
 #include "common/log.hxx"
 #include "onenas.hxx"
@@ -252,7 +250,6 @@ RNN_Genome* ONENAS::generate_genome() {
     Log::debug("getting mu/sigma after random initialization of copy!\n");
     double _mu, _sigma;
     genome->get_mu_sigma(genome->best_parameters, _mu, _sigma);
-    // assert (genome->weight_rules!=NULL);
     return genome;
 }
 
@@ -977,9 +974,9 @@ void ONENAS::set_evolution_hyper_parameters() {
     }
 }
 
-void ONENAS::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
+void ONENAS::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) {
     Log::info("ONENAS:Finalizing generation %d\n", current_generation);
     string filename = output_directory + "/generation_" + std::to_string(current_generation);
 
-    speciation_strategy->finalize_generation(filename, validation_input, validation_output, test_input, test_output);
+    speciation_strategy->finalize_generation(filename, validation_input, validation_output, test_input, test_output, good_genome_ids);
 }

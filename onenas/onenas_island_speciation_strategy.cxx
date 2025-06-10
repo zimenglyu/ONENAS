@@ -16,8 +16,6 @@ using std::string;
 #include <fstream>
 using std::ofstream;
 
-#include <cassert>
-
 #include "examm.hxx"
 #include "rnn/rnn_genome.hxx"
 #include "onenas_island_speciation_strategy.hxx"
@@ -67,7 +65,7 @@ OneNasIslandSpeciationStrategy::OneNasIslandSpeciationStrategy(
     seed_genome->set_generation_id(generated_genomes);
     generated_genomes++;
     global_best_genome = NULL;
-    current_generation = 1;
+    current_generation = 0;
 }
 
 
@@ -130,7 +128,8 @@ bool OneNasIslandSpeciationStrategy::islands_full() const {
 //this will insert a COPY, original needs to be deleted
 //returns 0 if a new global best, < 0 if not inserted, > 0 otherwise
 int32_t OneNasIslandSpeciationStrategy::insert_genome(RNN_Genome* genome) {
-
+    // NOTE: commented out this part because global best is selected at end of generation
+    //       also it is not necessary to track global best genome here
     // bool new_global_best = false;
     // if (global_best_genome == NULL) {
     //     //this is the first insert of a genome so it's the global best by default
@@ -147,9 +146,8 @@ int32_t OneNasIslandSpeciationStrategy::insert_genome(RNN_Genome* genome) {
     evaluated_genomes++;
     int32_t island = genome->get_group_id();
 
-    Log::info("[DEBUG] About to call insert_genome with genome at %p (group_id: %d)\n", genome, genome->get_group_id());
     int32_t insert_position = islands[island]->insert_genome(genome);
-    Log::info("[DEBUG] Finished call to insert_genome with genome at %p (group_id: %d), insert_position: %d\n", genome, genome->get_group_id(), insert_position);
+
 
     return insert_position;
     // if (insert_position == 0) {
@@ -643,7 +641,7 @@ void OneNasIslandSpeciationStrategy::initialize_population(function<void(int32_t
     Log::info("OneNAS Speciation Strategy: Initialized %d islands\n", islands.size());
 }
 
-void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
+void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) {
     Log::info("OneNAS Speciation Strategy: Finalizing the generation\n");
     // steps in finalize_generation:
     // 1. evaluate_elite_population: update its fitness with most recent validation mse + sort the elite population
@@ -655,6 +653,7 @@ void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const 
     evaluate_elite_population(validation_input, validation_output);
     select_elite_population();
     generation_check();
+    get_elite_population_ids(good_genome_ids);
     global_best_genome = select_global_best_genome();
     write_global_best_prediction(filename, test_input, test_output);
 
@@ -742,6 +741,17 @@ void OneNasIslandSpeciationStrategy::select_elite_population() {
     }
     
 }
+
+void OneNasIslandSpeciationStrategy::get_elite_population_ids(vector<int32_t>& good_genome_ids) {
+    for (int i = 0; i < number_of_islands; i++) {
+        islands[i] -> get_elite_population_ids(good_genome_ids);
+    }
+    if (good_genome_ids.size() == 0) {
+        Log::fatal("No good genome ids found\n");
+        exit(1);
+    }
+}
+
 
 RNN_Genome* OneNasIslandSpeciationStrategy::get_seed_genome() {
     return seed_genome;

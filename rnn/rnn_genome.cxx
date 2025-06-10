@@ -50,8 +50,6 @@ using std::unordered_map;
 #include <map>
 using std::map;
 
-#include <cassert>
-
 #include "common/color_table.hxx"
 #include "common/log.hxx"
 #include "common/random.hxx"
@@ -104,8 +102,6 @@ RNN_Genome::RNN_Genome(
     nodes = _nodes;
     edges = _edges;
     recurrent_edges = _recurrent_edges;
-
-    // assert (_weight_rules!=NULL);
     // weight_rules = _weight_rules->copy();
 
     sort_nodes_by_depth();
@@ -169,7 +165,7 @@ RNN_Genome* RNN_Genome::copy() {
     for (int32_t i = 0; i < (int32_t) recurrent_edges.size(); i++) {
         recurrent_edge_copies.push_back(recurrent_edges[i]->copy(node_copies));
     }
-    // assert (weight_rules!=NULL);
+
     RNN_Genome* other = new RNN_Genome(node_copies, edge_copies, recurrent_edge_copies);
 
     other->group_id = group_id;
@@ -3403,8 +3399,6 @@ void RNN_Genome::read_from_stream(istream& bin_istream) {
     // weight_rules->set_weight_inheritance_method(weight_inheritance);
     // weight_rules->set_mutated_components_weight_method(mutated_component_weight);
 
-    // assert (weight_rules!=NULL);
-
     Log::debug("generation_id: %d\n", generation_id);
     Log::debug("bp_iterations: %d\n", bp_iterations);
 
@@ -3567,6 +3561,15 @@ void RNN_Genome::read_from_stream(istream& bin_istream) {
     istringstream normalize_std_devs_iss(normalize_std_devs_str);
     read_map(normalize_std_devs_iss, normalize_std_devs);
 
+    // Read training indices
+    int32_t training_indices_size;
+    bin_istream.read((char*) &training_indices_size, sizeof(int32_t));
+    training_indices.clear();
+    training_indices.resize(training_indices_size);
+    for (int32_t i = 0; i < training_indices_size; i++) {
+        bin_istream.read((char*) &training_indices[i], sizeof(int32_t));
+    }
+
     assign_reachability();
 }
 
@@ -3598,7 +3601,6 @@ void RNN_Genome::write_to_stream(ostream& bin_ostream) {
     bin_ostream.write((char*) &use_dropout, sizeof(bool));
     bin_ostream.write((char*) &dropout_probability, sizeof(double));
 
-    // assert (weight_rules!=NULL);
     // WeightType weight_initialize = weight_rules->get_weight_initialize_method();
     // WeightType weight_inheritance = weight_rules->get_weight_inheritance_method();
     // WeightType mutated_component_weight = weight_rules->get_mutated_components_weight_method();
@@ -3719,6 +3721,13 @@ void RNN_Genome::write_to_stream(ostream& bin_ostream) {
     write_map(normalize_std_devs_oss, normalize_std_devs);
     string normalize_std_devs_str = normalize_std_devs_oss.str();
     write_binary_string(bin_ostream, normalize_std_devs_str, "normalize_std_devs");
+
+    // Write training indices
+    int32_t training_indices_size = training_indices.size();
+    bin_ostream.write((char*) &training_indices_size, sizeof(int32_t));
+    for (int32_t i = 0; i < training_indices_size; i++) {
+        bin_ostream.write((char*) &training_indices[i], sizeof(int32_t));
+    }
 }
 
 void RNN_Genome::update_innovation_counts(int32_t& node_innovation_count, int32_t& edge_innovation_count) {
@@ -4508,4 +4517,13 @@ void RNN_Genome::write_equations(ostream& outstream) {
     }
     outstream << "best_validation_mse: " << to_string(this->get_best_validation_mse()) << endl;
     outstream << endl;
+}
+
+// Training indices management for online learning
+void RNN_Genome::set_training_indices(const vector<int32_t>& indices) {
+    training_indices = indices;
+}
+
+vector<int32_t> RNN_Genome::get_training_indices() const {
+    return training_indices;
 }

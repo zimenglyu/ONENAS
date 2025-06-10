@@ -85,6 +85,9 @@ class RNN_Genome {
     map<string, double> normalize_avgs;
     map<string, double> normalize_std_devs;
 
+    // Training indices used for this genome in online learning
+    vector<int32_t> training_indices;
+
    public:
     void sort_nodes_by_depth();
     void sort_edges_by_depth();
@@ -196,6 +199,10 @@ class RNN_Genome {
     vector<double> get_initial_parameters() const;
     void set_best_parameters(vector<double> parameters);     // INFO: ADDED BY ABDELRAHMAN TO USE FOR TRANSFER LEARNING
     void set_initial_parameters(vector<double> parameters);  // INFO: ADDED BY ABDELRAHMAN TO USE FOR TRANSFER LEARNING
+
+    // Training indices management for online learning
+    void set_training_indices(const vector<int32_t>& indices);
+    vector<int32_t> get_training_indices() const;
 
     void get_analytic_gradient(
         vector<RNN*>& rnns, const vector<double>& parameters, const vector<vector<vector<double> > >& inputs,
