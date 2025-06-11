@@ -12,6 +12,7 @@ using std::ofstream;
 
 #include <thread>
 using std::thread;
+#include <cstring>
 
 #include "arguments.hxx"
 #include "files.hxx"

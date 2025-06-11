@@ -336,6 +336,7 @@ int main(int argc, char** argv) {
         Log::error("Total generation is greater than the number of sets, setting total generation to %d\n", num_sets);
         total_generation = num_sets;
     }
+    Log::info("Total generation is set to: %d, number of total sets: %d\n", total_generation, num_sets);
     
     OnlineSeries* online_series = new OnlineSeries(num_sets, arguments);
 
@@ -361,7 +362,7 @@ int main(int argc, char** argv) {
         Log::major_divider(Log::INFO, "Created ONENAS!");
     }
 
-    for (int32_t  current_generation = 0; current_generation < num_sets; current_generation ++) {
+    for (int32_t  current_generation = 0; current_generation < total_generation; current_generation ++) {
         online_series->set_current_index(current_generation);
         // Log::info("current generation: %d\n", current_generation);
 
