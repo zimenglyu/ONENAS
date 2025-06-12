@@ -753,12 +753,13 @@ TimeSeriesSets* TimeSeriesSets::generate_from_arguments(const vector<string>& ar
         get_argument_vector(arguments, "--training_indexes", false, tss->training_indexes);
         get_argument_vector(arguments, "--test_indexes", false, tss->test_indexes);
 
-    } else if (argument_exists(arguments, "--training_filenames") && argument_exists(arguments, "--test_filenames")) {
+    // } else if (argument_exists(arguments, "--training_filenames") && argument_exists(arguments, "--test_filenames")) {
+    } else if (argument_exists(arguments, "--training_filenames")) {
         vector<string> training_filenames;
         get_argument_vector(arguments, "--training_filenames", true, training_filenames);
 
-        vector<string> test_filenames;
-        get_argument_vector(arguments, "--test_filenames", true, test_filenames);
+        // vector<string> test_filenames;
+        // get_argument_vector(arguments, "--test_filenames", true, test_filenames);
 
         int32_t current = 0;
         for (int32_t i = 0; i < (int32_t) training_filenames.size(); i++) {
@@ -767,11 +768,11 @@ TimeSeriesSets* TimeSeriesSets::generate_from_arguments(const vector<string>& ar
             current++;
         }
 
-        for (int32_t i = 0; i < (int32_t) test_filenames.size(); i++) {
-            tss->filenames.push_back(test_filenames[i]);
-            tss->test_indexes.push_back(current);
-            current++;
-        }
+        // for (int32_t i = 0; i < (int32_t) test_filenames.size(); i++) {
+        //     tss->filenames.push_back(test_filenames[i]);
+        //     tss->test_indexes.push_back(current);
+        //     current++;
+        // }
 
     } else {
         Log::fatal(

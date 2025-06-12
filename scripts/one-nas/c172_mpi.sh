@@ -119,8 +119,7 @@ echo "Results will be saved to: "$exp_name
 
 
 mpirun -np 2 ./mpi/onenas_mpi \
---training_filenames ../datasets/2019_ngafid_transfer/c172_file_[1-9].csv \
---test_filenames ../datasets/2019_ngafid_transfer/c172_file_1[0-2].csv \
+--training_filenames ../datasets/2019_ngafid_transfer/c172_file_[1-9].csv ../datasets/2019_ngafid_transfer/c172_file_1[0-2].csv \
 --time_offset 1 \
 --input_parameter_names $INPUT_PARAMETERS \
 --output_parameter_names $OUTPUT_PARAMETERS \
