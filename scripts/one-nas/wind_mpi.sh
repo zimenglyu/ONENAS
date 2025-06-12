@@ -105,6 +105,8 @@
 # DNAS-SPECIFIC ARGUMENTS:
 # --dnas_node_types <type1> <type2> ...       : Node types for DNAS evolution
 
+# --temperature <float>                        : Tempered sampling temperature τ for PER (default: 1.0)
+
 #=============================================================================
 
 cd build
@@ -139,4 +141,5 @@ mpirun -np 2 ./mpi/onenas_mpi \
 --start_score_tracking_generation 10 \
 --normalize min_max \
 --std_message_level INFO \
---file_message_level INFO 
+--file_message_level INFO \
+--temperature 1.0 

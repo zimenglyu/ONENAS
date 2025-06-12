@@ -44,6 +44,9 @@ class OnlineSeries {
         string get_training_data_method;
         map<int, vector<int32_t>> training_history; // key: generation id, value: training index
         
+        // Tempered Sampling parameters for PER
+        double temperature; // τ (tau) for tempered sampling: P(x_i) = w_i^(1/τ) / Σw_j^(1/τ)
+        
         // Memory management settings
         int32_t cleanup_frequency; // 0 means no cleanup, >0 means cleanup every N generations
         

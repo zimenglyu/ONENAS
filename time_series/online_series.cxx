@@ -26,6 +26,9 @@ using std::uniform_real_distribution;
 #include <unordered_set>
 using std::unordered_set;
 
+#include <cmath>
+using std::pow;
+
 #include "common/arguments.hxx"
 #include "common/log.hxx"
 
@@ -54,6 +57,10 @@ void OnlineSeries::get_online_arguments(const vector<string> &arguments) {
     start_score_tracking_generation = num_training_sets; // default value
     get_argument(arguments, "--start_score_tracking_generation", false, start_score_tracking_generation);
     get_argument(arguments, "--cleanup_frequency", false, cleanup_frequency);
+    
+    // Tempered Sampling parameter for PER
+    temperature = 1.0; // default: no tempering (τ = 1)
+    get_argument(arguments, "--temperature", false, temperature);
 }
 
 void OnlineSeries::set_current_index(int32_t _current_gen) {
@@ -95,27 +102,53 @@ void OnlineSeries::prioritized_experience_replay(vector<int32_t>& training_index
         available_scores.push_back(score);
     }
 
+    Log::info("PER: Using tempered sampling with temperature τ = %.3f\n", temperature);
+    
+    // Apply Tempered Sampling: P(x_i) = w_i^(1/τ) / Σw_j^(1/τ)
+    vector<double> tempered_weights;
+    tempered_weights.reserve(available_scores.size());
+    
+    for (int32_t score : available_scores) {
+        // Handle edge case: if score is 0, use small epsilon to avoid pow(0, x) issues
+        double weight = (score > 0) ? static_cast<double>(score) : 0.001;
+        double tempered_weight = pow(weight, 1.0 / temperature);
+        tempered_weights.push_back(tempered_weight);
+    }
+
+    // Log sampling behavior for debugging
+    if (temperature < 1.0) {
+        Log::debug("τ < 1.0: Sharper distribution → exploitation (high scores favored)\n");
+    } else if (temperature > 1.0) {
+        Log::debug("τ > 1.0: Flatter distribution → exploration (scores matter less)\n");
+    } else {
+        Log::debug("τ = 1.0: Original distribution (no tempering)\n");
+    }
+
     // Random number generator
     std::random_device rd;
-    // High-quality, fast random number generation. Standard modern RNG engine in C++11+.
     std::mt19937 gen(rd());
 
-    // Use scores as weights - creates a distribution where each index is chosen with probability proportional to its weight.
-    std::discrete_distribution<> dist(available_scores.begin(), available_scores.end());
+    // Use tempered weights for sampling
+    std::discrete_distribution<> dist(tempered_weights.begin(), tempered_weights.end());
 
     // To avoid duplicates
     std::unordered_set<int32_t> seen;
 
     while ((int32_t)training_index.size() < num_training_sets) {
-        int32_t sampled_idx = dist(gen);  // This is an index into available_scores/avalibale_training_index
+        int32_t sampled_idx = dist(gen);  // This is an index into tempered_weights/avalibale_training_index
         int32_t actual_episode_id = avalibale_training_index[sampled_idx];  // Get the actual episode ID
         
         // To avoid repeats
         if (seen.find(actual_episode_id) == seen.end()) {
             training_index.push_back(actual_episode_id);
             seen.insert(actual_episode_id);
+            
+            // Log selected episode info for debugging (only first few)
+            if (training_index.size() <= 3) {
+                Log::debug("Selected episode %d (score: %d, tempered_weight: %.4f)\n", 
+                          actual_episode_id, available_scores[sampled_idx], tempered_weights[sampled_idx]);
+            }
         }
-        // Log::info("current training index size: %d\n", (int32_t)training_index.size());
     }
 }
 

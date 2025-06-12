@@ -35,6 +35,7 @@
 # --start_score_tracking_generation <int>     : Generation to start tracking episode scores (default: 50)
 # --cleanup_frequency <int>                   : Frequency for episode cleanup (0 = no cleanup)
 # --total_generation <int>                    : Total number of generations to run
+# --temperature <float>                        : Tempered sampling temperature τ for PER (default: 1.0)
 
 # EVOLUTION/SPECIATION ARGUMENTS:
 # --speciation_method <method>                : Speciation strategy: 'island', 'neat', or 'onenas'
@@ -130,7 +131,7 @@ mpirun -np 2 ./mpi/onenas_mpi \
 --time_series_length 50 \
 --num_validation_sets 10 \
 --num_training_sets 20  \
---get_train_data_by PER \
+--get_train_data_by Uniform \
 --speciation_method onenas \
 --generated_population_size 10 \
 --elite_population_size 5 \
@@ -139,4 +140,5 @@ mpirun -np 2 ./mpi/onenas_mpi \
 --start_score_tracking_generation 10 \
 --normalize min_max \
 --std_message_level INFO \
---file_message_level INFO 
+--file_message_level INFO \
+--temperature 1.0 
