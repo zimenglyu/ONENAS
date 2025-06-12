@@ -80,7 +80,7 @@ class OnlineSeries {
         void add_training_history(int32_t generation_id, vector<int32_t>& train_index);
         vector<int32_t> get_training_history(int32_t generation_id);
         void update_scores(vector<int32_t>& generation_ids, int32_t current_generation);
-        void print_scores();
+        void write_scores_to_csv(int32_t generation, const string& stats_directory);
         
         // New episode-specific methods
         void update_episode_scores(vector<int32_t>& generation_ids, int32_t current_generation);

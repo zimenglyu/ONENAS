@@ -4,6 +4,15 @@ using std::string;
 #include <vector>
 using std::vector;
 
+#include <fstream>
+using std::ofstream;
+using std::ifstream;
+
+#include <iostream>
+using std::ios;
+
+#include <sys/stat.h>
+
 using std::min;
 
 #include <algorithm> 
@@ -176,13 +185,48 @@ void OnlineSeries::update_scores(vector<int32_t>& generation_ids, int32_t curren
     Log::info("Completed episode score updates\n");
 }
 
-void OnlineSeries::print_scores() {
-    Log::info("Current training scores: \n");
-    for (int32_t episode_id = 0; episode_id < current_index; episode_id++) {
-        int32_t score = get_episode_training_score(episode_id);
-        Log::info("%d \n", score);
+void OnlineSeries::write_scores_to_csv(int32_t generation, const string& stats_directory) {
+    // Create full path for the CSV file (stats directory already includes the stats path)
+    string csv_file_path = stats_directory + "/training_scores.csv";
+    
+    // Check if file exists to determine if we need to write header
+    bool file_exists = false;
+    {
+        std::ifstream test_file(csv_file_path);
+        file_exists = test_file.good();
     }
-    Log::info("\n");
+    
+    // Open CSV file in append mode
+    ofstream csv_file(csv_file_path, ios::app);
+    
+    if (!csv_file.is_open()) {
+        Log::error("Failed to open %s for writing\n", csv_file_path.c_str());
+        return;
+    }
+    
+    // Write header if file is new - use total_num_sets for all episodes
+    if (!file_exists) {
+        csv_file << "generation";
+        for (int32_t episode_id = 0; episode_id < total_num_sets; episode_id++) {
+            csv_file << ",episode_" << (episode_id + 1);  // 1-indexed episode names
+        }
+        csv_file << "\n";
+    }
+    
+    // Write generation number as first column
+    csv_file << generation;
+    
+    // Write scores for all episodes up to total_num_sets
+    for (int32_t episode_id = 0; episode_id < total_num_sets; episode_id++) {
+        int32_t score = get_episode_training_score(episode_id);
+        csv_file << "," << score;
+    }
+    
+    // End the row
+    csv_file << "\n";
+    csv_file.close();
+    
+    Log::info("Written scores for generation %d to %s\n", generation, csv_file_path.c_str());
 }
 
 // New episode management methods

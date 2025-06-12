@@ -12,10 +12,11 @@ cd build
 INPUT_PARAMETERS="Conditioner_Inlet_Temp Conditioner_Outlet_Temp Coal_Feeder_Rate Primary_Air_Flow Primary_Air_Split System_Secondary_Air_Flow_Total Secondary_Air_Flow Secondary_Air_Split Tertiary_Air_Split Total_Comb_Air_Flow Supp_Fuel_Flow Main_Flm_Int" 
 OUTPUT_PARAMETERS="Main_Flm_Int" 
 
-exp_name="../online_test_output/coal_mpi"
+exp_name="../online_test_output/"
 mkdir -p $exp_name
-echo "Running base EXAMM code with coal dataset, results will be saved to: "$exp_name
-echo "###-------------------###"
+echo "Running EXAMM with NEW EPISODE MANAGEMENT system on coal dataset"
+echo "Results will be saved to: "$exp_name
+
 
 mpirun -np 2 ./mpi/onanas_mpi \
 --training_filenames ../datasets/2018_coal/burner_[0-9].csv --test_filenames ../datasets/2018_coal/burner_1[0-1].csv \
@@ -33,9 +34,9 @@ mpirun -np 2 ./mpi/onanas_mpi \
 --speciation_method onenas \
 --generated_population_size 10 \
 --elite_population_size 5 \
---total_generation 500 \
+--total_generation 50 \
 --possible_node_types simple UGRNN MGU GRU delta LSTM \
+--start_score_tracking_generation 10 \
 --std_message_level INFO \
---file_message_level NONE
+--file_message_level DEBUG
 
-# --start_score_tracking_generation 10 \

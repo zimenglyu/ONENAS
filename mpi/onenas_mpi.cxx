@@ -4,6 +4,11 @@ using std::fixed;
 using std::setprecision;
 using std::setw;
 
+#include <fstream>
+#include <iostream>
+using std::ofstream;
+using std::ios;
+
 #include <mutex>
 using std::mutex;
 
@@ -18,6 +23,7 @@ using std::vector;
 
 #include "common/log.hxx"
 #include "common/process_arguments.hxx"
+#include "common/files.hxx"
 #include "onenas/onenas.hxx"
 #include "mpi.h"
 #include "rnn/generate_nn.hxx"
@@ -40,6 +46,11 @@ WeightUpdate* weight_update_method;
 
 bool finished = false;
 
+// CSV file objects for logging
+ofstream training_indices_csv;
+ofstream validation_test_indices_csv;
+string output_directory;
+
 vector<vector<vector<double> > > time_series_inputs;
 vector<vector<vector<double> > > time_series_outputs;
 vector<int32_t> time_series_index;
@@ -55,6 +66,94 @@ int32_t total_generation;
  */
 bool has_generated_enough_genomes(int32_t current_generated_genomes) {
     return current_generated_genomes >= generated_population_size * number_islands;
+}
+
+/**
+ * Get stats directory path
+ */
+string get_stats_directory() {
+    return output_directory + "/stats";
+}
+
+/**
+ * Initialize CSV files for logging training indices and validation/test indices
+ */
+void initialize_csv_files() {
+    // Create output directory if it doesn't exist
+    mkpath(output_directory.c_str(), 0777);
+    
+    // Create stats subdirectory
+    string stats_dir = get_stats_directory();
+    mkpath(stats_dir.c_str(), 0777);
+    
+    // Initialize training indices CSV file in stats directory
+    string training_csv_path = stats_dir + "/training_indices.csv";
+    training_indices_csv.open(training_csv_path.c_str(), ios::out);
+    if (!training_indices_csv.is_open()) {
+        Log::error("Failed to open %s for writing\n", training_csv_path.c_str());
+        return;
+    }
+    training_indices_csv << "genome_id,generation,training_indices\n";
+    
+    // Initialize validation/test indices CSV file in stats directory
+    string validation_csv_path = stats_dir + "/validation_test_indices.csv";
+    validation_test_indices_csv.open(validation_csv_path.c_str(), ios::out);
+    if (!validation_test_indices_csv.is_open()) {
+        Log::error("Failed to open %s for writing\n", validation_csv_path.c_str());
+        return;
+    }
+    validation_test_indices_csv << "generation,validation_indices,test_index\n";
+    
+    Log::info("CSV files initialized successfully in %s\n", stats_dir.c_str());
+}
+
+/**
+ * Close CSV files
+ */
+void close_csv_files() {
+    if (training_indices_csv.is_open()) {
+        training_indices_csv.close();
+    }
+    if (validation_test_indices_csv.is_open()) {
+        validation_test_indices_csv.close();
+    }
+    Log::info("CSV files closed\n");
+}
+
+/**
+ * Write training indices for a genome to CSV
+ */
+void write_training_indices_to_csv(int32_t genome_id, int32_t generation, const vector<int32_t>& training_indices) {
+    if (!training_indices_csv.is_open()) {
+        Log::error("Training indices CSV file is not open\n");
+        return;
+    }
+    
+    training_indices_csv << genome_id << "," << generation << ",\"";
+    for (size_t i = 0; i < training_indices.size(); i++) {
+        if (i > 0) training_indices_csv << ";";
+        training_indices_csv << training_indices[i];
+    }
+    training_indices_csv << "\"\n";
+    training_indices_csv.flush(); // Ensure data is written immediately
+}
+
+/**
+ * Write validation and test indices for a generation to CSV
+ */
+void write_validation_test_indices_to_csv(int32_t generation, const vector<int32_t>& validation_indices, int32_t test_index) {
+    if (!validation_test_indices_csv.is_open()) {
+        Log::error("Validation/test indices CSV file is not open\n");
+        return;
+    }
+    
+    validation_test_indices_csv << generation << ",\"";
+    for (size_t i = 0; i < validation_indices.size(); i++) {
+        if (i > 0) validation_test_indices_csv << ";";
+        validation_test_indices_csv << validation_indices[i];
+    }
+    validation_test_indices_csv << "\"," << test_index << "\n";
+    validation_test_indices_csv.flush(); // Ensure data is written immediately
 }
 
 void send_work_request(int32_t target) {
@@ -139,14 +238,14 @@ void populate_current_time_series_data(
         if (episode != nullptr) {
             current_training_inputs.push_back(episode->get_inputs());
             current_training_outputs.push_back(episode->get_outputs());
-            Log::info("Worker: training episode ID: %d\n", episode_id);
+            Log::debug("Worker: training episode ID: %d\n", episode_id);
         } else {
             Log::warning("Episode ID %d not found, falling back to legacy method\n", episode_id);
             // Fallback to legacy method using original time series arrays
             if (episode_id < (int32_t)time_series_inputs.size()) {
                 current_training_inputs.push_back(time_series_inputs[episode_id]);
                 current_training_outputs.push_back(time_series_outputs[episode_id]);
-                Log::info("Worker: training legacy index: %d\n", episode_id);
+                Log::debug("Worker: training legacy index: %d\n", episode_id);
             } else {
                 Log::error("Episode ID %d out of bounds for both episodes and legacy data\n", episode_id);
             }
@@ -160,14 +259,14 @@ void populate_current_time_series_data(
         if (episode != nullptr) {
             current_validation_inputs.push_back(episode->get_inputs());
             current_validation_outputs.push_back(episode->get_outputs());
-            Log::info("Worker: validation episode ID: %d\n", episode_id);
+            Log::debug("Worker: validation episode ID: %d\n", episode_id);
         } else {
             Log::warning("Episode ID %d not found for validation, falling back to legacy method\n", episode_id);  
             // Fallback to legacy method using original time series arrays
             if (episode_id < (int32_t)time_series_inputs.size()) {
                 current_validation_inputs.push_back(time_series_inputs[episode_id]);
                 current_validation_outputs.push_back(time_series_outputs[episode_id]);
-                Log::info("Worker: validation legacy index: %d\n", episode_id);
+                Log::debug("Worker: validation legacy index: %d\n", episode_id);
             } else {
                 Log::error("Episode ID %d out of bounds for both episodes and legacy data\n", episode_id);
             }
@@ -210,7 +309,7 @@ void populate_test_and_validation_data(
     Log::info("Current testing episode ID: %d\n", test_index);
 }
 
-void master(int32_t max_rank, OnlineSeries* online_series) {
+void master(int32_t max_rank, OnlineSeries* online_series, int32_t current_generation) {
     // the "main" id will have already been set by the main function so we do not need to re-set it here
     Log::debug("MAX int32_t: %d\n", numeric_limits<int32_t>::max());
 
@@ -248,6 +347,9 @@ void master(int32_t max_rank, OnlineSeries* online_series) {
                     
                     // Attach training indices to genome before sending to worker
                     genome->set_training_indices(master_training_index);
+                    
+                    // Write training indices to CSV
+                    write_training_indices_to_csv(generation_id, current_generation, master_training_index);
                     
                     Log::info("Master: Generated %d training indices for genome %d, sending to worker: %d\n", 
                              master_training_index.size(), genome->get_generation_id(), source);
@@ -387,8 +489,10 @@ int main(int argc, char** argv) {
     // Load required parameters
     get_argument(arguments, "--number_islands", true, number_islands);
     get_argument(arguments, "--generated_population_size", true, generated_population_size);
+    get_argument(arguments, "--output_directory", true, output_directory);
 
     Log::info("ONENAS will generate %d genomes per generation\n", generated_population_size * number_islands);
+    Log::info("Output directory: %s\n", output_directory.c_str());
 
     TimeSeriesSets* time_series_sets = NULL;
     time_series_sets = TimeSeriesSets::generate_from_arguments(arguments);
@@ -440,6 +544,9 @@ int main(int argc, char** argv) {
     if (rank == 0) {
         onenas = generate_onenas_from_arguments(arguments, time_series_sets, weight_rules, seed_genome);
         Log::major_divider(Log::INFO, "Created ONENAS!");
+        
+        // Initialize CSV files for logging (only on master process)
+        initialize_csv_files();
     }
 
     for (int32_t  current_generation = 0; current_generation < total_generation; current_generation ++) {
@@ -450,7 +557,7 @@ int main(int argc, char** argv) {
         if (rank ==0) {
             Log::major_divider(Log::INFO, "New generation");
             Log::info("Current generation: %d \n", current_generation);
-            master(max_rank, online_series);           
+            master(max_rank, online_series, current_generation);           
         } else {
             worker(rank, online_series);
         }
@@ -460,6 +567,9 @@ int main(int argc, char** argv) {
             vector <int32_t> validation_index;
             online_series->get_validation_index(validation_index);
             int32_t test_index = online_series->get_test_index();
+
+            // Write validation and test indices to CSV
+            write_validation_test_indices_to_csv(current_generation, validation_index, test_index);
 
             vector< vector< vector<double> > > current_test_inputs;
             vector< vector< vector<double> > > current_test_outputs;
@@ -481,7 +591,7 @@ int main(int argc, char** argv) {
             // 2. finalize_generation() returns good_genome_ids (which are generation IDs of elite genomes)
             // 3. For each good genome, we look up which episodes it used and increment their scores by +1
             online_series->update_scores(good_genome_ids, current_generation);
-            online_series->print_scores();
+            online_series->write_scores_to_csv(current_generation, get_stats_directory());
             
             // Cleanup episodes periodically based on configuration
             online_series->perform_periodic_cleanup(current_generation);
@@ -494,6 +604,12 @@ int main(int argc, char** argv) {
         if (rank == 0) Log::error("generation %d finished\n", current_generation);
         
     }
+    
+    // Close CSV files (only on master process)
+    if (rank == 0) {
+        close_csv_files();
+    }
+    
     Log::set_id("main_" + to_string(rank));
     finished = true;
     Log::debug("rank %d completed!\n");
