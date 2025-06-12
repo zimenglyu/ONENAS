@@ -39,7 +39,7 @@ class OnlineSeries {
         int32_t current_index; // current index = current_generation + num_training_sets
         vector< int32_t > avalibale_training_index;
         int32_t num_training_sets;
-        int32_t num_validataion_sets;
+        int32_t num_validation_sets;
         int32_t start_score_tracking_generation; // generation number to start updating scores, default 20
         string get_training_data_method;
         map<int, vector<int32_t>> training_history; // key: generation id, value: training index

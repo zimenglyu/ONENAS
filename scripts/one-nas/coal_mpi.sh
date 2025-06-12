@@ -30,7 +30,7 @@
 
 # ONLINE LEARNING ARGUMENTS:
 # --num_training_sets <int>                   : Number of training sets per generation
-# --num_validataion_sets <int>                : Number of validation sets per generation
+# --num_validation_sets <int>                : Number of validation sets per generation
 # --get_train_data_by <method>                : Training data selection: 'Uniform' or 'PER' (Prioritized Experience Replay)
 # --start_score_tracking_generation <int>     : Generation to start tracking episode scores (default: 50)
 # --cleanup_frequency <int>                   : Frequency for episode cleanup (0 = no cleanup)
@@ -118,7 +118,7 @@ echo "Running ONE-NAS with NEW EPISODE MANAGEMENT system on coal dataset"
 echo "Results will be saved to: "$exp_name
 
 
-mpirun -np 2 ./mpi/onanas_mpi \
+mpirun -np 2 ./mpi/onenas_mpi \
 --training_filenames ../datasets/2018_coal/burner_[0-9].csv --test_filenames ../datasets/2018_coal/burner_1[0-1].csv \
 --time_offset 1 \
 --input_parameter_names $INPUT_PARAMETERS \
@@ -128,7 +128,7 @@ mpirun -np 2 ./mpi/onanas_mpi \
 --output_directory $exp_name \
 --num_mutations 2 \
 --time_series_length 50 \
---num_validataion_sets 10 \
+--num_validation_sets 10 \
 --num_training_sets 20  \
 --get_train_data_by PER \
 --speciation_method onenas \

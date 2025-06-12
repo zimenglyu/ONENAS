@@ -48,7 +48,7 @@ OnlineSeries::~OnlineSeries() {
 }
 
 void OnlineSeries::get_online_arguments(const vector<string> &arguments) {
-    get_argument(arguments, "--num_validataion_sets", true, num_validataion_sets);
+    get_argument(arguments, "--num_validation_sets", true, num_validation_sets);
     get_argument(arguments, "--num_training_sets", true, num_training_sets);
     get_argument(arguments, "--get_train_data_by", true, get_training_data_method);
     start_score_tracking_generation = num_training_sets; // default value
@@ -141,14 +141,14 @@ vector<int32_t> OnlineSeries::get_training_index(vector<int32_t>& training_index
 
 vector< int32_t > OnlineSeries::get_validation_index(vector<int32_t>& validation_index) {
     validation_index.clear();
-    for (int32_t i = 0; i < num_validataion_sets; i++) {
+    for (int32_t i = 0; i < num_validation_sets; i++) {
         validation_index.push_back(current_index + i);
     }
     return validation_index;
 }
 
 int32_t OnlineSeries::get_test_index() {
-    return current_index + num_validataion_sets;
+    return current_index + num_validation_sets;
 }
 
 void OnlineSeries::add_training_history(int32_t generation_id, vector<int32_t>& train_index) {
