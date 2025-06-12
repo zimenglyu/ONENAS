@@ -145,7 +145,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
                     auto duplicate_genome_iterator = lower_bound(genomes.begin(), genomes.end(), *potential_match, sort_genomes_by_fitness());
                     bool found = false;
                     for (; duplicate_genome_iterator != genomes.end(); duplicate_genome_iterator++) {
-                        Log::info("duplicate_genome_iterator: %p, (*potential_match): %p\n", (*duplicate_genome_iterator), (*potential_match));
+                        Log::debug("duplicate_genome_iterator: %p, (*potential_match): %p\n", (*duplicate_genome_iterator), (*potential_match));
 
                         if ((*duplicate_genome_iterator) == (*potential_match)) {
                             found = true;
@@ -158,10 +158,10 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
                         exit(1);
                     }
 
-                    Log::info("potential_match->get_fitness(): %lf, duplicate_genome_iterator->get_fitness(): %lf, new_fitness: %lf\n", (*potential_match)->get_fitness(), (*duplicate_genome_iterator)->get_fitness(), new_fitness);
+                    Log::debug("potential_match->get_fitness(): %lf, duplicate_genome_iterator->get_fitness(): %lf, new_fitness: %lf\n", (*potential_match)->get_fitness(), (*duplicate_genome_iterator)->get_fitness(), new_fitness);
 
                     int32_t duplicate_genome_index = duplicate_genome_iterator - genomes.begin();
-                    Log::info("duplicate_genome_index: %d\n", duplicate_genome_index);
+                    Log::debug("duplicate_genome_index: %d\n", duplicate_genome_index);
                     //int32_t test_index = contains(genome);
                     //Log::info("test_index: %d\n", test_index);
 
@@ -184,7 +184,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
                     Log::debug("structure_map[%s].size() after erase: %d\n", structural_hash.c_str(), structure_map[structural_hash].size());
 
                     if (potential_matches.size() == 0) {
-                        Log::info("deleting the potential_matches vector for hash '%s' because it was empty.\n", structural_hash.c_str());
+                        Log::debug("deleting the potential_matches vector for hash '%s' because it was empty.\n", structural_hash.c_str());
                         structure_map.erase(structural_hash);
                         break; //break because this vector is now empty and deleted
                     }
@@ -209,7 +209,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
         copy->set_weights(best);
     }
     copy -> set_generation_id (genome -> get_generation_id());
-    Log::info("created copy to insert to island: %d\n", copy->get_group_id());
+    Log::debug("created copy to insert to island: %d\n", copy->get_group_id());
     auto index_iterator = upper_bound(genomes.begin(), genomes.end(), copy, sort_genomes_by_fitness());
     int32_t insert_index = index_iterator - genomes.begin();
     Log::info("inserting genome at index: %d\n", insert_index);
@@ -234,7 +234,7 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
     if (insert_index == 0) {
         //this was a new best genome for this island
 
-        Log::info("new best fitness for island: %d!\n", population_type);
+        Log::debug("new best fitness for island: %d!\n", population_type);
 
         if (genome->get_fitness() != EXAMM_MAX_DOUBLE) {
             //need to set the weights for non-initial genomes so we

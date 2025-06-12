@@ -34,6 +34,10 @@ SET (CMAKE_CXX_FLAGS_RELEASE        "${CMAKE_CXX_FLAGS} -O4 -funroll-loops -DNDE
 
 #SET (CMAKE_SHARED_LINKER_FLAGS      " -Wall -O1 -funroll-loops -msse3 -g -fsanitize=address -fno-omit-frame-pointer -shared-libasan -DGLIBCXX_DEBUG")
 
+# Add GCC-specific warning suppression
+if(CMAKE_COMPILER_IS_GNUCXX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-maybe-uninitialized")
+endif()
 
 set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} /opt/local/lib)
 

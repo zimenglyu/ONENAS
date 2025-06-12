@@ -208,7 +208,7 @@ bool ONENAS::insert_genome(RNN_Genome* genome) {
 
     // write this genome to disk if it was a new best found genome
     if (save_genome_option.compare("all_best_genomes") == 0) {
-        Log::info("save genome option compared, save genome option size: %d!\n", save_genome_option.size());
+        Log::debug("save genome option compared, save genome option size: %d!\n", save_genome_option.size());
 
         if (insert_position == 0) {
             save_genome(genome, "rnn_genome");

@@ -124,6 +124,7 @@ void receive_terminate_message(int32_t source) {
 }
 
 void populate_current_time_series_data(
+    OnlineSeries* online_series,
     const vector<int32_t>& train_index,
     const vector<int32_t>& validation_index,
     vector<vector<vector<double>>>& current_training_inputs,
@@ -131,16 +132,82 @@ void populate_current_time_series_data(
     vector<vector<vector<double>>>& current_validation_inputs,
     vector<vector<vector<double>>>& current_validation_outputs
 ) {
+    // train_index contains episode IDs (original time series indices)
     for (int32_t i = 0; i < (int32_t)train_index.size(); i++) {
-        current_training_inputs.push_back(time_series_inputs[train_index[i]]);
-        current_training_outputs.push_back(time_series_outputs[train_index[i]]);
-        Log::info("Worker: training index: %d\n", train_index[i]);
+        int32_t episode_id = train_index[i];  // This is the original episode ID
+        TimeSeriesEpisode* episode = online_series->get_episode(episode_id);
+        if (episode != nullptr) {
+            current_training_inputs.push_back(episode->get_inputs());
+            current_training_outputs.push_back(episode->get_outputs());
+            Log::info("Worker: training episode ID: %d\n", episode_id);
+        } else {
+            Log::warning("Episode ID %d not found, falling back to legacy method\n", episode_id);
+            // Fallback to legacy method using original time series arrays
+            if (episode_id < (int32_t)time_series_inputs.size()) {
+                current_training_inputs.push_back(time_series_inputs[episode_id]);
+                current_training_outputs.push_back(time_series_outputs[episode_id]);
+                Log::info("Worker: training legacy index: %d\n", episode_id);
+            } else {
+                Log::error("Episode ID %d out of bounds for both episodes and legacy data\n", episode_id);
+            }
+        }
     }
+    
+    // validation_index contains episode IDs (original time series indices)
     for (int32_t i = 0; i < (int32_t)validation_index.size(); i++) {
-        current_validation_inputs.push_back(time_series_inputs[validation_index[i]]);
-        current_validation_outputs.push_back(time_series_outputs[validation_index[i]]);
-        Log::info("Worker: validation index: %d\n", validation_index[i]);
+        int32_t episode_id = validation_index[i];  // This is the original episode ID
+        TimeSeriesEpisode* episode = online_series->get_episode(episode_id);
+        if (episode != nullptr) {
+            current_validation_inputs.push_back(episode->get_inputs());
+            current_validation_outputs.push_back(episode->get_outputs());
+            Log::info("Worker: validation episode ID: %d\n", episode_id);
+        } else {
+            Log::warning("Episode ID %d not found for validation, falling back to legacy method\n", episode_id);  
+            // Fallback to legacy method using original time series arrays
+            if (episode_id < (int32_t)time_series_inputs.size()) {
+                current_validation_inputs.push_back(time_series_inputs[episode_id]);
+                current_validation_outputs.push_back(time_series_outputs[episode_id]);
+                Log::info("Worker: validation legacy index: %d\n", episode_id);
+            } else {
+                Log::error("Episode ID %d out of bounds for both episodes and legacy data\n", episode_id);
+            }
+        }
     }
+}
+
+void populate_test_and_validation_data(
+    OnlineSeries* online_series,
+    int32_t test_index,
+    const vector<int32_t>& validation_index,
+    vector<vector<vector<double>>>& current_test_inputs,
+    vector<vector<vector<double>>>& current_test_outputs,
+    vector<vector<vector<double>>>& current_validation_inputs,
+    vector<vector<vector<double>>>& current_validation_outputs
+) {
+    // test_index is an episode ID (original time series index)
+    TimeSeriesEpisode* test_episode = online_series->get_episode(test_index);
+    if (test_episode != nullptr) {
+        current_test_inputs.push_back(test_episode->get_inputs());
+        current_test_outputs.push_back(test_episode->get_outputs());
+    } else {
+        Log::error("Test episode ID %d not found in episodes\n", test_index);
+        exit(1);
+    }
+    
+    // validation_index contains episode IDs (original time series indices)
+    for (int32_t i = 0; i < (int32_t)validation_index.size(); i++) {
+        int32_t episode_id = validation_index[i];  // This is the original episode ID
+        TimeSeriesEpisode* val_episode = online_series->get_episode(episode_id);
+        if (val_episode != nullptr) {
+            current_validation_inputs.push_back(val_episode->get_inputs());
+            current_validation_outputs.push_back(val_episode->get_outputs());
+            Log::debug("validation episode ID: %d\n", episode_id);
+        } else {
+            Log::error("Validation episode ID %d not found in episodes\n", episode_id);
+            exit(1);
+        }
+    }
+    Log::info("Current testing episode ID: %d\n", test_index);
 }
 
 void master(int32_t max_rank, OnlineSeries* online_series) {
@@ -173,6 +240,12 @@ void master(int32_t max_rank, OnlineSeries* online_series) {
                     vector<int32_t> master_training_index;
                     online_series->get_training_index(master_training_index);
                     
+                    // Record training history immediately when training indices are generated
+                    int32_t generation_id = genome->get_generation_id();
+                    online_series->add_training_history(generation_id, master_training_index);
+                    Log::info("Master: Recorded training history for genome %d with %d indices\n", 
+                             generation_id, master_training_index.size());
+                    
                     // Attach training indices to genome before sending to worker
                     genome->set_training_indices(master_training_index);
                     
@@ -204,14 +277,8 @@ void master(int32_t max_rank, OnlineSeries* online_series) {
             Log::debug("received genome from: %d\n", source);
             RNN_Genome* genome = receive_genome_from(source);
 
-            // Extract training indices from the genome and add to master's OnlineSeries
-            vector<int32_t> training_indices = genome->get_training_indices();
-            int32_t generation_id = genome->get_generation_id();
-            if (!training_indices.empty()) {
-                online_series->add_training_history(generation_id, training_indices);
-                Log::debug("Master: added training indices of size %d for generation %d\n", 
-                          training_indices.size(), generation_id);
-            }
+            // Training history was already recorded when genome was generated
+            // No need to extract and re-add training indices here
 
             onenas_mutex.lock();
             onenas->insert_genome(genome);
@@ -266,8 +333,11 @@ void worker(int32_t rank, OnlineSeries* online_series) {
             Log::info("Worker %d: Using %d training indices provided by master for genome %d\n", 
                      rank, train_index.size(), genome->get_generation_id());
 
+            // Use episode-based data population if available, otherwise use legacy method
             populate_current_time_series_data(
-                train_index, validation_index, current_training_inputs, current_training_outputs, current_validation_inputs, current_validation_outputs
+                online_series, train_index, validation_index, 
+                current_training_inputs, current_training_outputs, 
+                current_validation_inputs, current_validation_outputs
             );
 
             //have each worker write the backproagation to a separate log file
@@ -339,6 +409,16 @@ int main(int argc, char** argv) {
     Log::info("Total generation is set to: %d, number of total sets: %d\n", total_generation, num_sets);
     
     OnlineSeries* online_series = new OnlineSeries(num_sets, arguments);
+    
+    // Initialize episode management system
+    Log::info("Initializing episode management system\n");
+    online_series->initialize_episodes(time_series_inputs, time_series_outputs);
+    online_series->print_episode_stats();
+    
+    // Optional: Clear global vectors to save memory if episodes are being used
+    // time_series_inputs.clear();
+    // time_series_outputs.clear();
+    Log::info("Episode management initialization complete\n");
 
     weight_update_method = new WeightUpdate();
     weight_update_method->generate_from_arguments(arguments);
@@ -386,20 +466,26 @@ int main(int argc, char** argv) {
             vector< vector< vector<double> > > current_validation_inputs;
             vector< vector< vector<double> > > current_validation_outputs;
 
-            current_test_inputs.push_back(time_series_inputs[test_index]);
-            current_test_outputs.push_back(time_series_outputs[test_index]);
-
-            for (int32_t  i = 0; i < (int32_t)validation_index.size(); i++) {
-                current_validation_inputs.push_back(time_series_inputs[validation_index[i]]);
-                current_validation_outputs.push_back(time_series_outputs[validation_index[i]]);
-                Log::debug("validation index: %d\n", validation_index[i]);
-            }
-            Log::info("Current testing index: %d\n", test_index);
+            // Populate test and validation data from episodes
+            populate_test_and_validation_data(
+                online_series, test_index, validation_index,
+                current_test_inputs, current_test_outputs,
+                current_validation_inputs, current_validation_outputs
+            );
 
             vector<int32_t> good_genome_ids;
             onenas->finalize_generation(current_generation, current_validation_inputs, current_validation_outputs, current_test_inputs, current_test_outputs, good_genome_ids);
+            
+            // Updated training history flow:
+            // 1. When training indices were generated (earlier in master()), we recorded training_history[generation_id] = episode_ids
+            // 2. finalize_generation() returns good_genome_ids (which are generation IDs of elite genomes)
+            // 3. For each good genome, we look up which episodes it used and increment their scores by +1
             online_series->update_scores(good_genome_ids, current_generation);
             online_series->print_scores();
+            
+            // Cleanup episodes periodically based on configuration
+            online_series->perform_periodic_cleanup(current_generation);
+            
             onenas->update_log();
             Log::info("Generation %d finished\n", current_generation);
         }

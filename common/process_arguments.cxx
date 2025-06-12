@@ -86,7 +86,7 @@ ONENAS* generate_onenas_from_arguments(
     get_argument_vector(arguments, "--possible_node_types", false, possible_node_types);
     string save_genome_option = "all_best_genomes";
     get_argument(arguments, "--save_genome_option", false, save_genome_option);
-
+    Log::info("save genome option: %s\n", save_genome_option.c_str());
 
     // random_sequence_length = argument_exists(arguments, "--random_sequence_length");
     // get_argument(arguments, "--sequence_length_lower_bound", false, sequence_length_lower_bound);
