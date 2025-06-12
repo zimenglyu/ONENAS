@@ -85,6 +85,9 @@ class OnlineSeries {
         // New episode-specific methods
         void update_episode_scores(vector<int32_t>& generation_ids, int32_t current_generation);
         int32_t get_episode_training_score(int32_t episode_id);
+        
+        // Getter for training data method
+        string get_training_method() const { return get_training_data_method; }
 };
 
 

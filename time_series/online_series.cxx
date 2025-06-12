@@ -152,6 +152,12 @@ int32_t OnlineSeries::get_test_index() {
 }
 
 void OnlineSeries::add_training_history(int32_t generation_id, vector<int32_t>& train_index) {
+    // Skip training history tracking for uniform sampling since it's only needed for score-based updates
+    if (get_training_data_method.compare("Uniform") == 0) {
+        Log::debug("Training data method is 'Uniform' - skipping training history tracking\n");
+        return;
+    }
+    
     // Make an explicit copy of train_index since it will be deleted after this function call
     // train_index contains episode IDs (original time series indices)
     vector<int32_t> train_index_copy = train_index;
@@ -168,6 +174,12 @@ vector<int32_t> OnlineSeries::get_training_history(int32_t generation_id) {
 
 void OnlineSeries::update_scores(vector<int32_t>& generation_ids, int32_t current_generation) {
     Log::info("OnlineSeries: Starting score updates for generation %d\n", current_generation);
+    
+    // Skip score tracking for uniform sampling since scores are not used
+    if (get_training_data_method.compare("Uniform") == 0) {
+        Log::info("Training data method is 'Uniform' - skipping score tracking and updates\n");
+        return;
+    }
     
     // Check if we should start updating scores based on current generation
     if (current_generation < start_score_tracking_generation) {
@@ -186,6 +198,12 @@ void OnlineSeries::update_scores(vector<int32_t>& generation_ids, int32_t curren
 }
 
 void OnlineSeries::write_scores_to_csv(int32_t generation, const string& stats_directory) {
+    // Skip CSV writing for uniform sampling since scores are not tracked
+    if (get_training_data_method.compare("Uniform") == 0) {
+        Log::debug("Training data method is 'Uniform' - skipping score CSV writing\n");
+        return;
+    }
+    
     // Create full path for the CSV file (stats directory already includes the stats path)
     string csv_file_path = stats_directory + "/training_scores.csv";
     
