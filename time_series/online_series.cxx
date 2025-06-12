@@ -46,7 +46,13 @@ OnlineSeries::OnlineSeries(const int32_t _total_num_sets,const vector<string> &a
 }
 
 OnlineSeries::~OnlineSeries() {
-    // Episodes will be automatically cleaned up by unique_ptr destructors
+    // Clean up episodes manually
+    for (int32_t i = 0; i < (int32_t)episodes.size(); i++) {
+        if (episodes[i] != NULL) {
+            delete episodes[i];
+            episodes[i] = NULL;
+        }
+    }
     episodes.clear();
 }
 
@@ -282,18 +288,26 @@ void OnlineSeries::write_scores_to_csv(int32_t generation, const string& stats_d
 
 // New episode management methods
 
-void OnlineSeries::add_episode(unique_ptr<TimeSeriesEpisode> episode) {
-    episodes.push_back(std::move(episode));
+void OnlineSeries::add_episode(TimeSeriesEpisode* episode) {
+    episodes.push_back(episode);
 }
 
 void OnlineSeries::initialize_episodes(const vector<vector<vector<double>>>& inputs, const vector<vector<vector<double>>>& outputs) {
+    // Clean up any existing episodes first
+    for (int32_t i = 0; i < (int32_t)episodes.size(); i++) {
+        if (episodes[i] != NULL) {
+            delete episodes[i];
+            episodes[i] = NULL;
+        }
+    }
     episodes.clear();
+    
     int32_t num_episodes = min(inputs.size(), outputs.size());
     
     for (int32_t i = 0; i < num_episodes; i++) {
-        // c++ 11 smart pointer to prevent memory leak
-        auto episode = std::make_unique<TimeSeriesEpisode>(i, inputs[i], outputs[i]);
-        episodes.push_back(std::move(episode));
+        // Use traditional new instead of make_unique
+        TimeSeriesEpisode* episode = new TimeSeriesEpisode(i, inputs[i], outputs[i]);
+        episodes.push_back(episode);
     }
     
     Log::info("Initialized %d episodes\n", num_episodes);
@@ -302,18 +316,20 @@ void OnlineSeries::initialize_episodes(const vector<vector<vector<double>>>& inp
 TimeSeriesEpisode* OnlineSeries::get_episode(int32_t episode_id) {
     // Search for episode by ID, not by vector index
     for (int32_t i = 0; i < (int32_t)episodes.size(); i++) {
-        if (episodes[i] && episodes[i]->get_episode_id() == episode_id) {
-            return episodes[i].get();
+        if (episodes[i] != NULL && episodes[i]->get_episode_id() == episode_id) {
+            return episodes[i];
         }
     }
-    return nullptr;
+    return NULL;
 }
 
 void OnlineSeries::print_episode_stats() {
     Log::info("Episode Statistics:\n");
     Log::info("Total episodes: %d\n", (int32_t)episodes.size());
     for (int32_t i = 0; i < min(5, (int32_t)episodes.size()); i++) {
-        episodes[i]->print_stats();
+        if (episodes[i] != NULL) {
+            episodes[i]->print_stats();
+        }
     }
 }
 
@@ -339,7 +355,7 @@ void OnlineSeries::update_episode_scores(vector<int32_t>& generation_ids, int32_
             
             // Find episode by ID and increment its score
             for (int32_t k = 0; k < (int32_t)episodes.size(); k++) {
-                if (episodes[k] && episodes[k]->get_episode_id() == episode_id) {
+                if (episodes[k] != NULL && episodes[k]->get_episode_id() == episode_id) {
                     episodes[k]->update_training_score(1);  // Add score by +1
                     episodes[k]->add_training_generation(generation_id);
                     Log::debug("Incremented score for episode ID %d (used by good genome %d)\n", 
@@ -354,7 +370,7 @@ void OnlineSeries::update_episode_scores(vector<int32_t>& generation_ids, int32_
 int32_t OnlineSeries::get_episode_training_score(int32_t episode_id) {
     // Search for episode by ID, not by vector index
     for (int32_t i = 0; i < (int32_t)episodes.size(); i++) {
-        if (episodes[i] && episodes[i]->get_episode_id() == episode_id) {
+        if (episodes[i] != NULL && episodes[i]->get_episode_id() == episode_id) {
             return episodes[i]->get_training_score();
         }
     }

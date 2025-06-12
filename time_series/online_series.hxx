@@ -13,9 +13,6 @@ using std::map;
 #include <vector>
 using std::vector;
 
-#include <memory>
-using std::unique_ptr;
-
 #include <random>
 using std::normal_distribution;
 using std::default_random_engine;
@@ -25,7 +22,7 @@ using std::default_random_engine;
 class OnlineSeries {
     private:
         // Episode management - new approach
-        vector<unique_ptr<TimeSeriesEpisode>> episodes;
+        vector<TimeSeriesEpisode*> episodes;
         
         // Legacy members for compatibility (will be gradually phased out)
         vector< double > mean;
@@ -55,7 +52,7 @@ class OnlineSeries {
         ~OnlineSeries();
 
         // Episode management methods - new approach
-        void add_episode(unique_ptr<TimeSeriesEpisode> episode);
+        void add_episode(TimeSeriesEpisode* episode);
         void initialize_episodes(const vector<vector<vector<double>>>& inputs, const vector<vector<vector<double>>>& outputs);
         TimeSeriesEpisode* get_episode(int32_t episode_id);
         void print_episode_stats();
