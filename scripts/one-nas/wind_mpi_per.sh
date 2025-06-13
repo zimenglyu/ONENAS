@@ -114,12 +114,10 @@ cd build
 INPUT_PARAMETERS="Ba_avg Rt_avg DCs_avg Cm_avg P_avg S_avg Cosphi_avg Db1t_avg Db2t_avg Dst_avg Gb1t_avg Gb2t_avg Git_avg Gost_avg Ya_avg Yt_avg Ws_avg Wa_avg Ot_avg Nf_avg Nu_avg Rbt_avg"
 OUTPUT_PARAMETERS="P_avg"
 
-
-
 for i in {1..4}
 do
 
-exp_name="../results/wind_original/$i"
+exp_name="../results/wind_per/$i"
 mkdir -p $exp_name
 echo "Running ONE-NAS with NEW EPISODE MANAGEMENT system on wind turbine dataset"
 echo "Results will be saved to: "$exp_name
@@ -137,7 +135,7 @@ mpirun -np 16 ./mpi/onenas_mpi \
 --time_series_length 50 \
 --num_validation_sets 10 \
 --num_training_sets 50  \
---get_train_data_by Uniform \
+--get_train_data_by PER \
 --speciation_method onenas \
 --generated_population_size 10 \
 --elite_population_size 10 \

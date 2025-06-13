@@ -215,9 +215,6 @@ int main(int argc, char** argv) {
 
     genome->disable_dropout();
 
-    random_sequence_length = argument_exists(arguments, "--random_sequence_length");
-    get_argument(arguments, "--sequence_length_lower_bound", false, sequence_length_lower_bound);
-    get_argument(arguments, "--sequence_length_upper_bound", false, sequence_length_upper_bound);
 
     if (argument_exists(arguments, "--stochastic")) {
         Log::info("running stochastic back prop \n");

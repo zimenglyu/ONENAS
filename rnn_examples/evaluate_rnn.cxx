@@ -48,17 +48,17 @@ int main(int argc, char** argv) {
     );
     Log::debug("got time series sets.\n");
 
-    string normalize_type = genome->get_normalize_type();
-    if (normalize_type.compare("min_max") == 0) {
-        time_series_sets->normalize_min_max(genome->get_normalize_mins(), genome->get_normalize_maxs());
-    } else if (normalize_type.compare("avg_std_dev") == 0) {
-        time_series_sets->normalize_avg_std_dev(
-            genome->get_normalize_avgs(), genome->get_normalize_std_devs(), genome->get_normalize_mins(),
-            genome->get_normalize_maxs()
-        );
-    }
+    // string normalize_type = genome->get_normalize_type();
+    // if (normalize_type.compare("min_max") == 0) {
+    //     time_series_sets->normalize_min_max(genome->get_normalize_mins(), genome->get_normalize_maxs());
+    // } else if (normalize_type.compare("avg_std_dev") == 0) {
+    //     time_series_sets->normalize_avg_std_dev(
+    //         genome->get_normalize_avgs(), genome->get_normalize_std_devs(), genome->get_normalize_mins(),
+    //         genome->get_normalize_maxs()
+    //     );
+    // }
 
-    Log::info("normalized type: %s \n", normalize_type.c_str());
+    // Log::info("normalized type: %s \n", normalize_type.c_str());
 
     int32_t time_offset = 1;
     get_argument(arguments, "--time_offset", true, time_offset);

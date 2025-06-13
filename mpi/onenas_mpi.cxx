@@ -469,6 +469,63 @@ void worker(int32_t rank, OnlineSeries* online_series) {
     Log::release_id("worker_" + to_string(rank));
 }
 
+/**
+ * Write normalized and sliced time series data to separate CSV files
+ * The data will be in normalized form (0-1 range) to match prediction files
+ */
+void write_sliced_files(const vector<vector<vector<double>>>& inputs, 
+                       const vector<vector<vector<double>>>& outputs,
+                       const vector<string>& input_parameter_names,
+                       const vector<string>& output_parameter_names,
+                       const string& base_directory) {
+    
+    // Create the directory if it doesn't exist
+    mkpath(base_directory.c_str(), 0777);
+    
+    Log::info("Writing %d sliced files to directory: %s\n", inputs.size(), base_directory.c_str());
+    
+    for (int32_t slice_idx = 0; slice_idx < (int32_t)inputs.size(); slice_idx++) {
+        string filename = base_directory + "/generation_" + to_string(slice_idx) + ".csv";
+        ofstream outfile(filename);
+        
+        if (!outfile.is_open()) {
+            Log::error("Failed to open file %s for writing\n", filename.c_str());
+            continue;
+        }
+        
+        // Write header with only input parameter names (output parameters are already in input)
+        bool first_column = true;
+        for (const string& param : input_parameter_names) {
+            if (!first_column) outfile << ",";
+            outfile << param;
+            first_column = false;
+        }
+        outfile << "\n";
+        
+        // Get the number of time steps (should be the same for inputs and outputs)
+        int32_t time_steps = inputs[slice_idx][0].size();
+        int32_t num_input_params = inputs[slice_idx].size();
+        int32_t num_output_params = outputs[slice_idx].size();
+        
+        // Write data rows (each row is a time step) - only input values since output parameters are already in input
+        for (int32_t t = 0; t < time_steps; t++) {
+            bool first_value = true;
+            
+            // Write only input values for this time step (normalized)
+            for (int32_t param = 0; param < num_input_params; param++) {
+                if (!first_value) outfile << ",";
+                outfile << inputs[slice_idx][param][t];
+                first_value = false;
+            }
+            
+            outfile << "\n";
+        }
+        
+        outfile.close();
+        Log::info("Written sliced file: %s with %d time steps (normalized values)\n", filename.c_str(), time_steps);
+    }
+}
+
 int main(int argc, char** argv) {
     std::cout << "Starting ONENAS MPI Program" << std::endl;
     MPI_Init(&argc, &argv);
@@ -502,6 +559,19 @@ int main(int argc, char** argv) {
     Log::major_divider(Log::INFO, "Sliced time series!");
     Log::info("Time series inputs shape: %d, %d, %d \n", time_series_inputs.size(), time_series_inputs[0].size(), time_series_inputs[0][0].size());
     Log::info("Time series outputs shape: %d, %d, %d \n", time_series_outputs.size(), time_series_outputs[0].size(), time_series_outputs[0][0].size());
+    
+    // Check if user wants to write sliced files and write them if requested
+    if (argument_exists(arguments, "--write_sliced_files") && rank == 0) {
+        string sliced_files_directory = output_directory + "/sliced_data";
+        vector<string> input_parameter_names = time_series_sets->get_input_parameter_names();
+        vector<string> output_parameter_names = time_series_sets->get_output_parameter_names();
+        
+        write_sliced_files(time_series_inputs, time_series_outputs, 
+                          input_parameter_names, output_parameter_names, 
+                          sliced_files_directory);
+        Log::info("Sliced files written to: %s (normalized values)\n", sliced_files_directory.c_str());
+    }
+    
     int32_t num_sets = time_series_inputs.size();
     Log::info("Time series number of sets after slicing: %d\n", num_sets);
     total_generation = num_sets; // default to the number of sets
