@@ -154,7 +154,7 @@ OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_
     int32_t num_mutations = 1;
     get_argument(arguments, "--num_mutations", false, num_mutations);
 
-    double mutation_rate = 0.70, intra_island_co_rate = 0.20, inter_island_co_rate = 0.10;
+    double mutation_rate = 0.40, intra_island_co_rate = 0.40, inter_island_co_rate = 0.20;
 
     if (number_islands == 1) {
         inter_island_co_rate = 0.0;

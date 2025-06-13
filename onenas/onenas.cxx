@@ -952,16 +952,16 @@ void ONENAS::set_evolution_hyper_parameters() {
     clone_rate = 1.0;
     add_edge_rate = 1.0;
     add_recurrent_edge_rate = 1.0;
-    enable_edge_rate = 1.0;
-    disable_edge_rate = 1.0;
+    enable_edge_rate = 2.0;
+    disable_edge_rate = 2.0;
     split_edge_rate = 0.0;
 
     bool node_ops = true;
     if (node_ops) {
         add_node_rate = 1.0;
-        enable_node_rate = 1.0;
+        enable_node_rate = 2.0;
         // disable_node_rate = 3.0;
-        disable_node_rate = 1.0;
+        disable_node_rate = 2.0;
         split_node_rate = 1.0;
         merge_node_rate = 1.0;
 
