@@ -23,7 +23,7 @@ using std::endl;
 
 int32_t Log::std_message_level = INFO;
 int32_t Log::file_message_level = INFO;
-bool Log::write_to_file = true;
+bool Log::write_to_file = false;
 int32_t Log::max_header_length = 256;
 int32_t Log::max_message_length = 1024;
 int32_t Log::process_rank = -1;
@@ -85,6 +85,7 @@ void Log::initialize(const vector<string>& arguments) {
     get_argument(arguments, "--std_message_level", true, std_message_level_str);
     get_argument(arguments, "--file_message_level", true, file_message_level_str);
     get_argument(arguments, "--output_directory", true, output_directory);
+    write_to_file = argument_exists(arguments, "--write_to_file");
 
     std_message_level = parse_level_from_string(std_message_level_str);
     file_message_level = parse_level_from_string(file_message_level_str);
@@ -181,7 +182,7 @@ void Log::write_message(
         }
     }
 
-    if (file_message_level >= message_level) {
+    if (write_to_file && file_message_level >= message_level) {
         LogFile* log_file = NULL;
 
         // check and see if we've already opened a file for this human readable id, if we haven't
