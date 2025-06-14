@@ -57,6 +57,7 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         vector<OneNasIsland*> islands;
         RNN_Genome* global_best_genome;
 
+        string output_directory;
     public:
         //static void register_command_line_arguments();
         //static OneNasIslandSpeciationStrategy* generate_from_command_line();
@@ -72,7 +73,7 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         int32_t _elite_population_size, double _mutation_rate, double _intra_island_crossover_rate,
         double _inter_island_crossover_rate, RNN_Genome *_seed_genome, string _island_ranking_method, 
         string _repopulation_method, int32_t _extinction_event_generation_number, int32_t _num_mutations,
-        int32_t _islands_to_exterminate, bool _repeat_extinction);
+        int32_t _islands_to_exterminate, bool _repeat_extinction, string _output_directory);
 
         /**
          * Transfer learning constructor.
@@ -214,16 +215,18 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
          * \param test_input the test input data
          * \param test_output the test output data
          */
-        void write_global_best_prediction(string filename, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);
+        void write_global_best_prediction(int32_t current_generation, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);
 
         void set_erased_islands_status();
         
-        void finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids);
+        void finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids);
 
         void evaluate_elite_population(const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output);
         void select_elite_population();
         void get_elite_population_ids(vector<int32_t>& good_genome_ids);
         void clear_population();
+
+        void save_genome(RNN_Genome* genome);
 
         void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules);
         RNN_Genome* get_seed_genome();

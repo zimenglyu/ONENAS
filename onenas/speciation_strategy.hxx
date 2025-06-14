@@ -93,7 +93,7 @@ class SpeciationStrategy {
     virtual RNN_Genome* get_seed_genome() = 0;
     virtual void save_entire_population(string output_path) = 0;
 
-    virtual void finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) = 0;
+    virtual void finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) = 0;
 
 };
 

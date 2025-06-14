@@ -153,6 +153,8 @@ OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_
     get_argument(arguments, "--repopulation_method", false, repopulation_method);
     int32_t num_mutations = 1;
     get_argument(arguments, "--num_mutations", false, num_mutations);
+    string output_directory = "";
+    get_argument(arguments, "--output_directory", true, output_directory);
 
     double mutation_rate = 0.40, intra_island_co_rate = 0.40, inter_island_co_rate = 0.20;
 
@@ -167,7 +169,7 @@ OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_
         number_islands, generated_population_size, elite_population_size, mutation_rate, intra_island_co_rate
         ,
         inter_island_co_rate, seed_genome, island_ranking_method, repopulation_method,
-        extinction_event_generation_number, num_mutations, islands_to_exterminate, repeat_extinction
+        extinction_event_generation_number, num_mutations, islands_to_exterminate, repeat_extinction, output_directory
     );
 
     return island_strategy;

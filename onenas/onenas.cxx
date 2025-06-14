@@ -207,29 +207,21 @@ bool ONENAS::insert_genome(RNN_Genome* genome) {
     Log::info("insert to speciation strategy complete, at position: %d\n", insert_position);
 
     // write this genome to disk if it was a new best found genome
-    if (save_genome_option.compare("all_best_genomes") == 0) {
-        Log::debug("save genome option compared, save genome option size: %d!\n", save_genome_option.size());
+    // if (save_genome_option.compare("all_best_genomes") == 0) {
+    //     Log::debug("save genome option compared, save genome option size: %d!\n", save_genome_option.size());
 
-        if (insert_position == 0) {
-            save_genome(genome, "rnn_genome");
-        }
-    }
-    Log::info("save genome complete\n");
+    //     if (insert_position == 0) {
+    //         save_genome(genome, "rnn_genome");
+    //     }
+    // }
+    // Log::info("save genome complete\n");
 
     // update_op_log_statistics(genome, insert_position);
     // update_log();
     return insert_position >= 0;
 }
 
-// write function to save genomes to file
-void ONENAS::save_genome(RNN_Genome* genome, string genome_name = "rnn_genome") {
-    genome->write_graphviz(output_directory + "/" + genome_name + "_" + to_string(genome->get_generation_id()) + ".gv");
-    ofstream equations_filestream(
-        output_directory + "/" + genome_name + "_" + to_string(genome->get_generation_id()) + ".txt"
-    );
-    genome->write_equations(equations_filestream);
-    genome->write_to_file(output_directory + "/" + genome_name + "_" + to_string(genome->get_generation_id()) + ".bin");
-}
+
 
 RNN_Genome* ONENAS::generate_genome() {
 
@@ -976,7 +968,7 @@ void ONENAS::set_evolution_hyper_parameters() {
 
 void ONENAS::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) {
     Log::info("ONENAS:Finalizing generation %d\n", current_generation);
-    string filename = output_directory + "/generation_" + std::to_string(current_generation);
+    // string filename = output_directory + "/generation_" + std::to_string(current_generation);
 
-    speciation_strategy->finalize_generation(filename, validation_input, validation_output, test_input, test_output, good_genome_ids);
+    speciation_strategy->finalize_generation(current_generation, validation_input, validation_output, test_input, test_output, good_genome_ids);
 }

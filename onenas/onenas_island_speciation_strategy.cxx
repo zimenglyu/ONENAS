@@ -20,6 +20,7 @@ using std::ofstream;
 #include "rnn/rnn_genome.hxx"
 #include "onenas_island_speciation_strategy.hxx"
 
+#include "common/files.hxx"
 #include "common/log.hxx"
 
 /**
@@ -31,7 +32,7 @@ OneNasIslandSpeciationStrategy::OneNasIslandSpeciationStrategy(
         double _inter_island_crossover_rate, RNN_Genome *_seed_genome,
         string _island_ranking_method, string _repopulation_method,
         int32_t _extinction_event_generation_number, int32_t _num_mutations,
-        int32_t _islands_to_exterminate, bool _repeat_extinction
+        int32_t _islands_to_exterminate, bool _repeat_extinction, string _output_directory
         ) :
                         generation_island(0),
                         number_of_islands(_number_of_islands),
@@ -48,7 +49,8 @@ OneNasIslandSpeciationStrategy::OneNasIslandSpeciationStrategy(
                         extinction_event_generation_number(_extinction_event_generation_number),
                         num_mutations(_num_mutations),
                         islands_to_exterminate(_islands_to_exterminate),
-                        repeat_extinction(_repeat_extinction) {
+                        repeat_extinction(_repeat_extinction),
+                        output_directory(_output_directory) {
     double rate_sum = mutation_rate + intra_island_crossover_rate + inter_island_crossover_rate;
     if (rate_sum != 1.0) {
         mutation_rate = mutation_rate / rate_sum;
@@ -551,7 +553,7 @@ RNN_Genome* OneNasIslandSpeciationStrategy::select_global_best_genome() {
     return best_genome;
 }
 
-void OneNasIslandSpeciationStrategy::write_global_best_prediction(string filename, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
+void OneNasIslandSpeciationStrategy::write_global_best_prediction(int32_t current_generation, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
     if (global_best_genome == NULL) {
         Log::error("Cannot write predictions: global_best_genome is NULL\n");
         return;
@@ -563,6 +565,8 @@ void OneNasIslandSpeciationStrategy::write_global_best_prediction(string filenam
         Log::error("Global best genome %d best parameter size is %d\n", global_best_genome->get_generation_id(), parameters.size());
         return;
     }
+
+    string filename = output_directory + "/generation_" + std::to_string(current_generation);
 
     // Get predictions for the global best genome
     vector< vector< vector<double> > > predictions = global_best_genome->get_predictions(parameters, test_input, test_output);
@@ -641,7 +645,7 @@ void OneNasIslandSpeciationStrategy::initialize_population(function<void(int32_t
     Log::info("OneNAS Speciation Strategy: Initialized %d islands\n", islands.size());
 }
 
-void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) {
+void OneNasIslandSpeciationStrategy::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) {
     Log::info("OneNAS Speciation Strategy: Finalizing the generation\n");
     // steps in finalize_generation:
     // 1. evaluate_elite_population: update its fitness with most recent validation mse + sort the elite population
@@ -655,7 +659,8 @@ void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const 
     generation_check();
     get_elite_population_ids(good_genome_ids);
     global_best_genome = select_global_best_genome();
-    write_global_best_prediction(filename, test_input, test_output);
+    write_global_best_prediction(current_generation, test_input, test_output);
+    save_genome(global_best_genome);
 
     // if (extinction_event_generation_number != 0){
     //     if(current_generation % extinction_event_generation_number == 0 ) {
@@ -682,6 +687,13 @@ void OneNasIslandSpeciationStrategy::finalize_generation(string filename, const 
     // generation ++;
     // return global_best_genome;
     current_generation ++;
+}
+
+// write function to save genomes to file
+void OneNasIslandSpeciationStrategy::save_genome(RNN_Genome* genome) {
+    string genomes_dir = output_directory + "/genomes";
+    mkpath(genomes_dir.c_str(), 0777);
+    genome->write_to_file(genomes_dir + "/" + "rnn_genome" + "_" + to_string(genome->get_generation_id()) + ".bin");
 }
 
 void OneNasIslandSpeciationStrategy::generation_check() {
