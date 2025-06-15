@@ -143,20 +143,30 @@ OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_
     get_argument(arguments, "--elite_population_size", true, elite_population_size);
     int32_t number_islands;
     get_argument(arguments, "--number_islands", true, number_islands);
-    int32_t extinction_event_generation_number = 0;
-    get_argument(arguments, "--extinction_event_generation_number", false, extinction_event_generation_number);
-    int32_t islands_to_exterminate = 0;
+    int32_t repopulation_frequency = 0; // if 0, no repopulation, if not 0, repopulate at this frequency
+    get_argument(arguments, "--repopulation_frequency", false, repopulation_frequency);
+    int32_t islands_to_exterminate = 1;
     get_argument(arguments, "--islands_to_exterminate", false, islands_to_exterminate);
-    string island_ranking_method = "";
+    string island_ranking_method = "EraseWorst";
     get_argument(arguments, "--island_ranking_method", false, island_ranking_method);
-    string repopulation_method = "";
+    string repopulation_method = "bestGenome";
     get_argument(arguments, "--repopulation_method", false, repopulation_method);
     int32_t num_mutations = 1;
     get_argument(arguments, "--num_mutations", false, num_mutations);
+    int32_t repopulation_mutations = 1;
+    get_argument(arguments, "--repopulation_mutations", false, repopulation_mutations);
     string output_directory = "";
     get_argument(arguments, "--output_directory", true, output_directory);
 
-    double mutation_rate = 0.40, intra_island_co_rate = 0.40, inter_island_co_rate = 0.20;
+    double mutation_rate = 0.70, intra_island_co_rate = 0.20, inter_island_co_rate = 0.10;
+    get_argument(arguments, "--mutation_rate", false, mutation_rate);
+    get_argument(arguments, "--intra_island_co_rate", false, intra_island_co_rate);
+    get_argument(arguments, "--inter_island_co_rate", false, inter_island_co_rate);
+
+    string control_size_method = "none";
+    get_argument(arguments, "--control_size_method", false, control_size_method);
+
+    bool compare_with_naive = argument_exists(arguments, "--compare_with_naive");
 
     if (number_islands == 1) {
         inter_island_co_rate = 0.0;
@@ -169,7 +179,8 @@ OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_
         number_islands, generated_population_size, elite_population_size, mutation_rate, intra_island_co_rate
         ,
         inter_island_co_rate, seed_genome, island_ranking_method, repopulation_method,
-        extinction_event_generation_number, num_mutations, islands_to_exterminate, repeat_extinction, output_directory
+        repopulation_frequency, num_mutations, repopulation_mutations, islands_to_exterminate, repeat_extinction, output_directory,
+        control_size_method, compare_with_naive
     );
 
     return island_strategy;

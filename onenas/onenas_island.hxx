@@ -61,6 +61,11 @@ class OneNasIsland {
         OneNasIsland(int32_t id, Population* _elite_population, int32_t _generated_size, int32_t _elite_size);
 
         /**
+         * Destructor - properly cleans up population memory
+         */
+        ~OneNasIsland();
+
+        /**
          * Returns the fitness of the best genome in the island
          *
          * \return the best fitness of the island

@@ -16,6 +16,9 @@ using std::string;
 #include "rnn/rnn_genome.hxx"
 #include "speciation_strategy.hxx"
 
+// Forward declaration to avoid circular dependency
+class ONENAS;
+
 class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
     private:
         int32_t generation_island; /**< Used to track which island to generate the next genome from. */
@@ -26,7 +29,7 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
 
         int32_t elite_population_size;
 
-        int32_t current_generation;
+        // int32_t current_generation;
 
         double mutation_rate; /**< How frequently to do mutations. Note that mutation_rate + intra_island_crossover_rate + inter_island_crossover_rate should equal 1, if not they will be scaled down such that they do. */
         double intra_island_crossover_rate; /**< How frequently to do intra-island crossovers. Note that mutation_rate + intra_island_crossover_rate + inter_island_crossover_rate should equal 1, if not they will be scaled down such that they do. */
@@ -41,8 +44,10 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
 
         string repopulation_method; /**< The method used to repopulate the island after being erased */
 
-        int32_t extinction_event_generation_number; /**< When EXAMM reaches this generation id, an extinction event will be triggered (i.e. islands will be killed and repopulated). */
+        int32_t repopulation_frequency; /**< Repopulate at this frequency, every repopulate_frequency generations. if 0, no repopulation */
         int32_t num_mutations; /**< When an island is erradicated, it is repopulated with copies of the best genome that have this number of mutations applied to them. */
+        int32_t repopulation_mutations; /**< When an island is repopulated, this is the number of mutations to apply to the best genome. */
+        
         int32_t islands_to_exterminate; /**< When an extinction event is triggered, this is the number of islands that will be exterminated. */
         int32_t max_genomes;
 
@@ -58,6 +63,17 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         RNN_Genome* global_best_genome;
 
         string output_directory;
+        
+        // Counters for comparing naive vs genome prediction performance
+        int32_t naive_better_count;   /**< Count of generations where naive predictions outperform genome */
+        int32_t genome_better_count;  /**< Count of generations where genome predictions outperform naive */
+        
+        // Control size method and comparison flag
+        string control_size_method;   /**< Method for controlling network size when genome outperforms naive */
+        bool compare_with_naive;      /**< Flag to enable/disable naive vs genome comparison */
+        
+        // Forward declaration to avoid circular dependency
+        ONENAS* onenas_instance;  /**< Reference to ONENAS instance for accessing mutation rates */
     public:
         //static void register_command_line_arguments();
         //static OneNasIslandSpeciationStrategy* generate_from_command_line();
@@ -72,8 +88,14 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         OneNasIslandSpeciationStrategy(int32_t _number_of_islands, int32_t _generated_population_size, 
         int32_t _elite_population_size, double _mutation_rate, double _intra_island_crossover_rate,
         double _inter_island_crossover_rate, RNN_Genome *_seed_genome, string _island_ranking_method, 
-        string _repopulation_method, int32_t _extinction_event_generation_number, int32_t _num_mutations,
-        int32_t _islands_to_exterminate, bool _repeat_extinction, string _output_directory);
+        string _repopulation_method, int32_t _repopulation_frequency, int32_t _num_mutations, int32_t _repopulation_mutations,
+        int32_t _islands_to_exterminate, bool _repeat_extinction, string _output_directory, 
+        string _control_size_method, bool _compare_with_naive);
+
+        /**
+         * Destructor - properly cleans up global_best_genome memory
+         */
+        ~OneNasIslandSpeciationStrategy();
 
         /**
          * Transfer learning constructor.
@@ -217,6 +239,33 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
          */
         void write_global_best_prediction(int32_t current_generation, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);
 
+        /**
+         * Calculates MSE performance for naive vs genome predictions
+         * \param predictions the genome predictions
+         * \param test_output the expected test output data
+         * \param naive_mse output parameter for naive MSE
+         * \param genome_mse output parameter for genome MSE
+         * \return true if calculation successful, false otherwise
+         */
+        bool calculate_prediction_performance(const vector< vector< vector<double> > > &predictions, const vector< vector< vector<double> > > &test_output, double &naive_mse, double &genome_mse);
+
+        /**
+         * Updates performance counters and logs results
+         * \param current_generation the current generation number
+         * \param naive_mse the naive prediction MSE
+         * \param genome_mse the genome prediction MSE
+         */
+        void update_performance_counters(int32_t current_generation, double naive_mse, double genome_mse);
+
+        /**
+         * Writes prediction data to CSV file
+         * \param filename the base filename for output
+         * \param predictions the genome predictions
+         * \param test_input the test input data
+         * \param test_output the test output data
+         */
+        void write_prediction_file(const string &filename, const vector< vector< vector<double> > > &predictions, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);
+
         void set_erased_islands_status();
         
         void finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids);
@@ -245,6 +294,20 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         ); 
 
         void generation_check();
+
+        void do_repopulation(int32_t current_generation);
+
+        /**
+         * Controls network size based on the specified method
+         * \param control_size_method the method to use for controlling network size
+         */
+        void control_network_size(string control_size_method);
+
+        /**
+         * Sets the ONENAS instance reference for accessing mutation rates
+         * \param onenas_ref pointer to the ONENAS instance
+         */
+        void set_onenas_instance(ONENAS* onenas_ref);
 };
 
 

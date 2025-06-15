@@ -505,7 +505,7 @@ void write_sliced_files(const vector<vector<vector<double>>>& inputs,
         // Get the number of time steps (should be the same for inputs and outputs)
         int32_t time_steps = inputs[slice_idx][0].size();
         int32_t num_input_params = inputs[slice_idx].size();
-        int32_t num_output_params = outputs[slice_idx].size();
+        // int32_t num_output_params = outputs[slice_idx].size();
         
         // Write data rows (each row is a time step) - only input values since output parameters are already in input
         for (int32_t t = 0; t < time_steps; t++) {
@@ -669,9 +669,6 @@ int main(int argc, char** argv) {
             onenas->update_log();
             Log::info("Generation %d finished\n", current_generation);
         }
-
-
-        if (rank == 0) Log::error("generation %d finished\n", current_generation);
         
     }
     

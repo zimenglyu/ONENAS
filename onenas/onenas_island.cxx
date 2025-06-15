@@ -39,6 +39,23 @@ OneNasIsland::OneNasIsland(int32_t _id, Population* _elite_population, int32_t _
     generated_population = new Population(GENERATED, generate_population_size, id);
 }
 
+OneNasIsland::~OneNasIsland() {
+    // Clean up population memory to prevent memory leaks
+    if (elite_population != NULL) {
+        Log::debug("Destructor: Deleting elite_population at %p for island %d\n", elite_population, id);
+        delete elite_population;
+        elite_population = NULL;
+    }
+    
+    if (generated_population != NULL) {
+        Log::debug("Destructor: Deleting generated_population at %p for island %d\n", generated_population, id);
+        delete generated_population;
+        generated_population = NULL;
+    }
+    
+    Log::debug("OneNasIsland destructor completed for island %d\n", id);
+}
+
 RNN_Genome* OneNasIsland::get_best_genome() {
     return elite_population->get_best_genome();
 }
@@ -184,6 +201,7 @@ void OneNasIsland::erase_island() {
     generated_population->erase_population();
     erased = true;
     erase_again = 5;
+    Log::info("Island %d erased!\n", id);
 }
 
 // void OneNasIsland::erase_structure_map() {

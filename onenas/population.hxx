@@ -44,6 +44,11 @@ class Population {
         Population(int32_t _population_type, int32_t _max_size, int32_t _island_id);
 
         /**
+         * Destructor - properly cleans up genome memory
+         */
+        ~Population();
+
+        /**
          * Returns the fitness of the best genome in the population
          *
          * \return the best fitness of the population

@@ -13,6 +13,9 @@ using std::map;
 #include <vector>
 using std::vector;
 
+#include <unordered_set>
+using std::unordered_set;
+
 #include <random>
 using std::normal_distribution;
 using std::default_random_engine;

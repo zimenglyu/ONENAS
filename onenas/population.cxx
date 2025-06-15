@@ -28,6 +28,14 @@ using std::unordered_map;
 Population::Population(int32_t _population_type, int32_t _max_size, int32_t _island_id) :  population_type(_population_type), max_size(_max_size), island_id(_island_id) {
 }
 
+Population::~Population() {
+    // Clean up all genome memory to prevent memory leaks
+    Log::debug("Destructor: Cleaning up population (type: %d, island: %d) with %d genomes\n", 
+               population_type, island_id, (int32_t)genomes.size());
+    erase_population(); // This already properly deletes all genomes and clears structure_map
+    Log::debug("Population destructor completed for island %d\n", island_id);
+}
+
 RNN_Genome* Population::get_best_genome() {
     if (genomes.size() == 0)  return NULL;
     else return genomes[0];

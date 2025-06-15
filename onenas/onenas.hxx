@@ -134,6 +134,12 @@ class ONENAS {
     void initialize_seed_genome();
     void update_op_log_statistics(RNN_Genome* genome, int32_t insert_position);
 
+    /**
+     * Reduces add mutation rates to control network growth
+     * \param factor the factor by which to reduce the rates (default: 0.5)
+     */
+    void reduce_add_mutation_rates(double factor = 0.5);
+
     void finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids);
 };
 

@@ -47,6 +47,15 @@ using std::to_string;
 ONENAS::~ONENAS() {
     delete weight_rules;
     delete genome_property;
+    delete speciation_strategy; 
+    
+    if (log_file != NULL) {
+        log_file->close();
+        delete log_file;
+        log_file = NULL;
+    }
+    
+    Log::debug("ONENAS destructor completed\n");
 }
 
 ONENAS::ONENAS(
@@ -82,6 +91,13 @@ ONENAS::ONENAS(
     Log::info("Finished initializing, now start ONENAS evolution\n");
 
     speciation_strategy->initialize_population(mutate_function, weight_rules);
+    
+    // Set reference to this ONENAS instance in the speciation strategy if it's an ONENAS strategy
+    OneNasIslandSpeciationStrategy* onenas_strategy = dynamic_cast<OneNasIslandSpeciationStrategy*>(speciation_strategy);
+    if (onenas_strategy != nullptr) {
+        onenas_strategy->set_onenas_instance(this);
+    }
+    
     generate_log();
     startClock = std::chrono::system_clock::now();
 }
@@ -944,16 +960,16 @@ void ONENAS::set_evolution_hyper_parameters() {
     clone_rate = 1.0;
     add_edge_rate = 1.0;
     add_recurrent_edge_rate = 1.0;
-    enable_edge_rate = 2.0;
-    disable_edge_rate = 2.0;
+    enable_edge_rate = 1.0;
+    disable_edge_rate = 1.0;
     split_edge_rate = 0.0;
 
     bool node_ops = true;
     if (node_ops) {
         add_node_rate = 1.0;
-        enable_node_rate = 2.0;
+        enable_node_rate = 1.0;
         // disable_node_rate = 3.0;
-        disable_node_rate = 2.0;
+        disable_node_rate = 1.0;
         split_node_rate = 1.0;
         merge_node_rate = 1.0;
 
@@ -964,6 +980,19 @@ void ONENAS::set_evolution_hyper_parameters() {
         split_node_rate = 0.0;
         merge_node_rate = 0.0;
     }
+}
+
+void ONENAS::reduce_add_mutation_rates(double factor) {
+    Log::info("Reducing add mutation rates by factor %.3f\n", factor);
+    Log::info("Before: add_edge_rate=%.3f, add_recurrent_edge_rate=%.3f, add_node_rate=%.3f\n", 
+             add_edge_rate, add_recurrent_edge_rate, add_node_rate);
+    
+    add_edge_rate *= factor;
+    add_recurrent_edge_rate *= factor;
+    add_node_rate *= factor;
+    
+    Log::info("After: add_edge_rate=%.3f, add_recurrent_edge_rate=%.3f, add_node_rate=%.3f\n", 
+             add_edge_rate, add_recurrent_edge_rate, add_node_rate);
 }
 
 void ONENAS::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) {

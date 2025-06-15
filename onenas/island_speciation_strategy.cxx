@@ -317,7 +317,6 @@ RNN_Genome* IslandSpeciationStrategy::generate_for_repopulating_island(
     uniform_real_distribution<double>& rng_0_1, minstd_rand0& generator, function<void(int32_t, RNN_Genome*)>& mutate,
     function<RNN_Genome*(RNN_Genome*, RNN_Genome*)>& crossover, WeightRules* weight_rules
 ) {
-    Log::info("Island %d: island is repopulating \n", generation_island);
     // Island *current_island = islands[generation_island];
     RNN_Genome* new_genome = NULL;
 
@@ -541,25 +540,33 @@ RNN_Genome* IslandSpeciationStrategy::parents_repopulation(
     RNN_Genome* parent1 = NULL;
     RNN_Genome* parent2 = NULL;
 
+    // Track whether parents are copies that need deletion
+    bool parent1_is_copy = false;
+    bool parent2_is_copy = false;
+    
     while (parent1 == NULL) {
         if (method.compare("randomParents") == 0) {
             islands[parent_island1]->copy_random_genome(rng_0_1, generator, &parent1);
+            parent1_is_copy = true; // This is a copy that needs deletion
         } else if (method.compare("bestParents") == 0) {
             parent1 = islands[parent_island1]->get_best_genome();
+            parent1_is_copy = false; // This is a reference, don't delete
         }
     }
 
     while (parent2 == NULL) {
         if (method.compare("randomParents") == 0) {
             islands[parent_island2]->copy_random_genome(rng_0_1, generator, &parent2);
+            parent2_is_copy = true; // This is a copy that needs deletion
         } else if (method.compare("bestParents") == 0) {
             parent2 = islands[parent_island2]->get_best_genome();
+            parent2_is_copy = false; // This is a reference, don't delete
         }
     }
 
     Log::debug(
-        "current island is %d, the parent1 island is %d, parent 2 island is %d\n", generation_island, parent_island1,
-        parent_island2
+        "current island is %d, the parent1 island is %d, parent 2 island is %d (parent1_copy: %d, parent2_copy: %d)\n", 
+        generation_island, parent_island1, parent_island2, parent1_is_copy, parent2_is_copy
     );
 
     // swap so the first parent is the more fit parent
@@ -567,8 +574,24 @@ RNN_Genome* IslandSpeciationStrategy::parents_repopulation(
         RNN_Genome* tmp = parent1;
         parent1 = parent2;
         parent2 = tmp;
+        // Also swap the copy flags
+        bool tmp_flag = parent1_is_copy;
+        parent1_is_copy = parent2_is_copy;
+        parent2_is_copy = tmp_flag;
     }
     genome = crossover(parent1, parent2);
+
+    // CRITICAL FIX: Delete parent copies to prevent memory leaks
+    if (parent1_is_copy) {
+        Log::debug("Deleting parent1 copy at %p\n", parent1);
+        delete parent1;
+        parent1 = NULL;
+    }
+    if (parent2_is_copy) {
+        Log::debug("Deleting parent2 copy at %p\n", parent2);
+        delete parent2;
+        parent2 = NULL;
+    }
 
     mutate(num_mutations, genome);
 

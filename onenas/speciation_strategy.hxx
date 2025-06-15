@@ -12,6 +12,11 @@ using std::uniform_real_distribution;
 class SpeciationStrategy {
    public:
     /**
+     * Virtual destructor to ensure proper cleanup of derived classes
+     */
+    virtual ~SpeciationStrategy() = default;
+
+    /**
      * \return the number of generated genomes.
      */
     virtual int32_t get_generated_genomes() const = 0;

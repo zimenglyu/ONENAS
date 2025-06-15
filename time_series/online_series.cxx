@@ -158,6 +158,8 @@ void OnlineSeries::prioritized_experience_replay(vector<int32_t>& training_index
     }
 }
 
+
+
 vector<int32_t> OnlineSeries::get_training_index(vector<int32_t>& training_index) {
 
     if (get_training_data_method.compare("Uniform") == 0) {
@@ -166,9 +168,57 @@ vector<int32_t> OnlineSeries::get_training_index(vector<int32_t>& training_index
         // int32_t s = min(num_training_sets, current_index);
         uniform_random_sample_index(training_index);
     } else if (get_training_data_method.compare("PER") == 0) {
-        Log::info("getting historical data with Priotized experience replay\n");
-        // int32_t num_random_sets = min(num_training_sets, current_index);
-        prioritized_experience_replay(training_index);
+        Log::info("getting historical data with hybrid PER (1/2 recent + 1/2 experience replay)\n");
+        
+        // Split training sets: half recent, half PER
+        int32_t num_recent_sets = num_training_sets / 2;
+        int32_t num_per_sets = num_training_sets - num_recent_sets;
+        
+        training_index.clear();
+        
+        // First half: Get most recent episodes
+        // Recent pool: [current_index - num_recent_sets, current_index - 1]
+        vector<int32_t> recent_index;
+        for (int32_t i = 0; i < num_recent_sets && i < current_index; i++) {
+            recent_index.push_back(current_index - 1 - i);  // Start from most recent
+        }
+        training_index.insert(training_index.end(), recent_index.begin(), recent_index.end());
+        Log::info("Added %d recent episodes (IDs: %d to %d)\n", 
+                 (int32_t)recent_index.size(), 
+                 recent_index.empty() ? -1 : recent_index.back(),
+                 recent_index.empty() ? -1 : recent_index.front());
+        
+        // Second half: Use PER from older episodes only
+        // PER pool: [0, current_index - num_recent_sets - 1]
+        int32_t per_pool_end = current_index - num_recent_sets;
+        if (per_pool_end > 0 && num_per_sets > 0) {
+            // Temporarily modify the available pool for PER
+            avalibale_training_index.clear();
+            for (int32_t i = 0; i < per_pool_end; i++) {
+                avalibale_training_index.push_back(i);
+            }
+            
+            // Shuffle the PER pool
+            auto rng = std::default_random_engine {};
+            shuffle(avalibale_training_index.begin(), avalibale_training_index.end(), rng);
+            
+            // Use PER sampling on the older episodes
+            vector<int32_t> per_index;
+            
+            // Temporarily set num_training_sets for PER call
+            int32_t original_num_training = num_training_sets;
+            num_training_sets = num_per_sets;
+            prioritized_experience_replay(per_index);
+            num_training_sets = original_num_training; // Restore original value
+            
+            training_index.insert(training_index.end(), per_index.begin(), per_index.end());
+            Log::info("Added %d episodes via PER from pool [0, %d] (target: %d, achieved: %d)\n", 
+                     (int32_t)per_index.size(), per_pool_end - 1, num_per_sets, (int32_t)per_index.size());
+        }
+        
+        // Ensure we have exactly num_training_sets episodes
+        Log::info("Final training set count: %d (target: %d)\n", 
+                 (int32_t)training_index.size(), num_training_sets);
     } else {
         Log::error("Invalid training data method: %s\n", get_training_data_method.c_str());
         exit(1);

@@ -105,6 +105,13 @@
 # DNAS-SPECIFIC ARGUMENTS:
 # --dnas_node_types <type1> <type2> ...       : Node types for DNAS evolution
 
+# PERFORMANCE CONTROL ARGUMENTS:
+# --compare_with_naive                        : Flag to enable naive vs genome prediction comparison
+# --control_size_method <method>              : Network size control method: 'reduce_mutation_rate', 'reduce_add_mutation', 'none'
+
+# ISLAND REPOPULATION ARGUMENTS:
+# --repopulation_frequency <int>              : Frequency for island repopulation events
+
 # --temperature <float>                        : Tempered sampling temperature τ for PER (default: 1.0)
 
 #=============================================================================
@@ -116,10 +123,10 @@ OUTPUT_PARAMETERS="P_avg"
 
 
 
-for i in {1..4}
+for i in {0..4}
 do
 
-exp_name="../results/wind_original/$i"
+exp_name="../results_1/wind_original/$i"
 mkdir -p $exp_name
 echo "Running ONE-NAS with NEW EPISODE MANAGEMENT system on wind turbine dataset"
 echo "Results will be saved to: "$exp_name
@@ -130,23 +137,25 @@ mpirun -np 16 ./mpi/onenas_mpi \
 --time_offset 1 \
 --input_parameter_names $INPUT_PARAMETERS \
 --output_parameter_names $OUTPUT_PARAMETERS \
---number_islands 10 \
+--number_islands 20 \
 --bp_iterations 10 \
 --output_directory $exp_name \
 --num_mutations 1 \
---time_series_length 50 \
---num_validation_sets 10 \
---num_training_sets 50  \
+--time_series_length 25 \
+--num_validation_sets 50 \
+--num_training_sets 300  \
 --get_train_data_by Uniform \
 --speciation_method onenas \
---generated_population_size 10 \
+--repopulation_frequency 50 \
+--generated_population_size 20 \
 --elite_population_size 10 \
 --possible_node_types simple UGRNN MGU GRU delta LSTM \
---start_score_tracking_generation 200 \
+--start_score_tracking_generation 500 \
 --normalize min_max \
+--compare_with_naive \
+--control_size_method reduce_add_mutation \
 --std_message_level INFO \
 --file_message_level INFO \
---write_sliced_files \
 --temperature 1.0 
 
 done
