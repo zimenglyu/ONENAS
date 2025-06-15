@@ -33,7 +33,6 @@
 # --num_validation_sets <int>                : Number of validation sets per generation
 # --get_train_data_by <method>                : Training data selection: 'Uniform' or 'PER' (Prioritized Experience Replay)
 # --start_score_tracking_generation <int>     : Generation to start tracking episode scores (default: 50)
-# --cleanup_frequency <int>                   : Frequency for episode cleanup (0 = no cleanup)
 # --total_generation <int>                    : Total number of generations to run
 # --temperature <float>                        : Tempered sampling temperature τ for PER (default: 1.0)
 

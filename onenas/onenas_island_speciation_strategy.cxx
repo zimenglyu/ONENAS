@@ -685,7 +685,7 @@ void OneNasIslandSpeciationStrategy::finalize_generation(int32_t current_generat
     save_genome(global_best_genome);
     
     // Check if we should trigger network size control (only when compare_with_naive is still enabled)
-    if (compare_with_naive) {
+    if (compare_with_naive && current_generation > 10) {
         if (genome_better_count > naive_better_count) {
             Log::info("=== PERFORMANCE THRESHOLD REACHED ===\n");
             Log::info("Generation %d: Genome consistently outperforming naive (Genome: %d > Naive: %d)\n", 
@@ -694,7 +694,10 @@ void OneNasIslandSpeciationStrategy::finalize_generation(int32_t current_generat
             
             // Apply network size control
             control_network_size(control_size_method);
-            generated_population_size /= 4;
+            generated_population_size = (int32_t)(std::floor(generated_population_size * 0.25));
+            if (generated_population_size < 1) {
+                generated_population_size = 1;
+            }
             Log::info("Generation %d: Reduced generated population size to %d\n", current_generation, generated_population_size);
             
             // Disable further comparisons - this only happens once

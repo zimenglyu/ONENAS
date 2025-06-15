@@ -33,7 +33,6 @@
 # --num_validation_sets <int>                : Number of validation sets per generation
 # --get_train_data_by <method>                : Training data selection: 'Uniform' or 'PER' (Prioritized Experience Replay)
 # --start_score_tracking_generation <int>     : Generation to start tracking episode scores (default: 50)
-# --cleanup_frequency <int>                   : Frequency for episode cleanup (0 = no cleanup)
 # --total_generation <int>                    : Total number of generations to run
 
 # EVOLUTION/SPECIATION ARGUMENTS:
@@ -126,7 +125,7 @@ OUTPUT_PARAMETERS="P_avg"
 for i in {0..4}
 do
 
-exp_name="../results_1/wind_original/$i"
+exp_name="../results_2/wind_original/$i"
 mkdir -p $exp_name
 echo "Running ONE-NAS with NEW EPISODE MANAGEMENT system on wind turbine dataset"
 echo "Results will be saved to: "$exp_name
@@ -147,7 +146,7 @@ mpirun -np 16 ./mpi/onenas_mpi \
 --get_train_data_by Uniform \
 --speciation_method onenas \
 --repopulation_frequency 50 \
---generated_population_size 20 \
+--generated_population_size 10 \
 --elite_population_size 10 \
 --possible_node_types simple UGRNN MGU GRU delta LSTM \
 --start_score_tracking_generation 500 \
