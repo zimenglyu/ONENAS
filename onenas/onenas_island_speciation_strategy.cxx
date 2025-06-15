@@ -106,6 +106,10 @@ int32_t OneNasIslandSpeciationStrategy::get_evaluated_genomes() const {
     return evaluated_genomes;
 }
 
+int32_t OneNasIslandSpeciationStrategy::get_generated_population_size() const {
+    return generated_population_size;
+}
+
 RNN_Genome* OneNasIslandSpeciationStrategy::get_best_genome() {
     //the global_best_genome is updated every time a genome is inserted
     return global_best_genome;

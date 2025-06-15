@@ -188,6 +188,10 @@ RNN_Genome* ONENAS::get_worst_genome() {
     return speciation_strategy->get_worst_genome();
 }
 
+SpeciationStrategy* ONENAS::get_speciation_strategy() {
+    return speciation_strategy;
+}
+
 // this will insert a COPY, original needs to be deleted
 bool ONENAS::insert_genome(RNN_Genome* genome) {
     // discard genomes with NaN fitness

@@ -121,6 +121,8 @@ class ONENAS {
     RNN_Genome* get_best_genome();
     RNN_Genome* get_worst_genome();
 
+    SpeciationStrategy* get_speciation_strategy();
+
     void save_genome(RNN_Genome* genome, string genome_name);
 
     string get_output_directory() const;

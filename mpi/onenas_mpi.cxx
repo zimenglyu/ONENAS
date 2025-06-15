@@ -25,6 +25,7 @@ using std::vector;
 #include "common/process_arguments.hxx"
 #include "common/files.hxx"
 #include "onenas/onenas.hxx"
+#include "onenas/onenas_island_speciation_strategy.hxx"
 #include "mpi.h"
 #include "rnn/generate_nn.hxx"
 #include "time_series/time_series.hxx"
@@ -65,7 +66,21 @@ int32_t total_generation;
  * @return true if enough genomes have been generated, false otherwise
  */
 bool has_generated_enough_genomes(int32_t current_generated_genomes) {
-    return current_generated_genomes >= generated_population_size * number_islands;
+    // Get the current generated_population_size from the speciation strategy
+    // in case it has been modified during execution
+    OneNasIslandSpeciationStrategy* onenas_strategy = 
+        dynamic_cast<OneNasIslandSpeciationStrategy*>(onenas->get_speciation_strategy());
+    
+    int32_t current_generated_population_size = generated_population_size; // Default fallback
+    if (onenas_strategy != nullptr) {
+        current_generated_population_size = onenas_strategy->get_generated_population_size();
+        if (current_generated_population_size != generated_population_size) {
+            Log::info("Master: Generated population size updated from %d to %d\n", 
+                     generated_population_size, current_generated_population_size);
+        }
+    }
+    
+    return current_generated_genomes >= current_generated_population_size * number_islands;
 }
 
 /**

@@ -119,6 +119,11 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         int32_t get_evaluated_genomes() const;
 
         /**
+         * \return the current generated population size (may have been modified during execution).
+         */
+        int32_t get_generated_population_size() const;
+
+        /**
          * Gets the fitness of the best genome of all the islands
          * \return the best fitness over all islands
          */
