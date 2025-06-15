@@ -126,7 +126,7 @@ OUTPUT_PARAMETERS="P_avg"
 for i in {0..4}
 do
 
-exp_name="../results_1/wind_original/$i"
+exp_name="../results_1/wind_original_2/$i"
 mkdir -p $exp_name
 echo "Running ONE-NAS with NEW EPISODE MANAGEMENT system on wind turbine dataset"
 echo "Results will be saved to: "$exp_name
