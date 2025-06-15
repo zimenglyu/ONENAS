@@ -270,6 +270,14 @@ class Log {
      * \param level the message level for the divider
      */
     static void minor_divider(int8_t level);
+
+    static string timestamp();
+    static string hex_timestamp();
+    
+    // Memory monitoring utilities
+    static void log_memory_usage(const string& component_name);
+    static long get_memory_usage_kb();
+    static void log_memory_diff(const string& operation, long before_memory_kb);
 };
 
 #endif

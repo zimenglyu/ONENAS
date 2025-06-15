@@ -27,11 +27,11 @@ class OnlineSeries {
         // Episode management - new approach
         vector<TimeSeriesEpisode*> episodes;
         
-        // Legacy members for compatibility (will be gradually phased out)
-        vector< double > mean;
-        vector< double > std;
-        normal_distribution<double> gaussian;
-        default_random_engine noise_generator;
+        // // Legacy members for compatibility (will be gradually phased out)
+        // vector< double > mean;
+        // vector< double > std;
+        // normal_distribution<double> gaussian;
+        // default_random_engine noise_generator;
         
         // Core configuration
         int32_t total_num_sets;
@@ -48,9 +48,6 @@ class OnlineSeries {
         // Tempered Sampling parameters for PER
         double temperature; // τ (tau) for tempered sampling: P(x_i) = w_i^(1/τ) / Σw_j^(1/τ)
         
-        // Memory management settings
-        int32_t cleanup_frequency; // 0 means no cleanup, >0 means cleanup every N generations
-        
     public:
         OnlineSeries(int32_t _num_sets, const vector<string> &arguments);
         ~OnlineSeries();
@@ -61,9 +58,8 @@ class OnlineSeries {
         TimeSeriesEpisode* get_episode(int32_t episode_id);
         void print_episode_stats();
         
-        // Periodic cleanup management
-        bool should_cleanup_episodes(int32_t current_generation);
-        void perform_periodic_cleanup(int32_t current_generation);
+        // Smart memory management method based on good genome IDs
+        void cleanup_old_training_history(const vector<int32_t>& good_genome_ids);
         
         // Legacy methods (maintained for compatibility)
         void get_mean_std();
@@ -92,6 +88,9 @@ class OnlineSeries {
         
         // Getter for training data method
         string get_training_method() const { return get_training_data_method; }
+        
+        // Memory monitoring helper
+        int32_t get_training_history_size() const { return (int32_t)training_history.size(); }
 
         int32_t get_max_generation();
 };

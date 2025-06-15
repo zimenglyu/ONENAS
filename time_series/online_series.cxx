@@ -17,6 +17,7 @@ using std::min;
 
 #include <algorithm> 
 using std::shuffle;
+using std::min_element;
 
 #include <random>
 using std::mt19937;
@@ -38,7 +39,6 @@ OnlineSeries::OnlineSeries(const int32_t _total_num_sets,const vector<string> &a
     total_num_sets = _total_num_sets;
     current_index = 0;
     start_score_tracking_generation = 50; // default value
-    cleanup_frequency = 0; // default: no cleanup
     get_online_arguments(arguments);
     num_test_sets = 1;
     // Initialize episodes vector
@@ -62,7 +62,6 @@ void OnlineSeries::get_online_arguments(const vector<string> &arguments) {
     get_argument(arguments, "--get_train_data_by", true, get_training_data_method);
     start_score_tracking_generation = num_training_sets; // default value
     get_argument(arguments, "--start_score_tracking_generation", false, start_score_tracking_generation);
-    get_argument(arguments, "--cleanup_frequency", false, cleanup_frequency);
     
     // Tempered Sampling parameter for PER
     temperature = 1.0; // default: no tempering (τ = 1)
@@ -407,7 +406,7 @@ void OnlineSeries::update_episode_scores(vector<int32_t>& generation_ids, int32_
             for (int32_t k = 0; k < (int32_t)episodes.size(); k++) {
                 if (episodes[k] != NULL && episodes[k]->get_episode_id() == episode_id) {
                     episodes[k]->update_training_score(1);  // Add score by +1
-                    episodes[k]->add_training_generation(generation_id);
+                    // episodes[k]->add_training_generation(generation_id);
                     Log::debug("Incremented score for episode ID %d (used by good genome %d)\n", 
                               episode_id, generation_id);
                     break;  // Found the episode, no need to continue searching
@@ -427,24 +426,42 @@ int32_t OnlineSeries::get_episode_training_score(int32_t episode_id) {
     return 1; // Default score
 }
 
-bool OnlineSeries::should_cleanup_episodes(int32_t current_generation) {
-    // No cleanup if frequency is 0 or negative
-    if (cleanup_frequency <= 0) {
-        return false;
-    }
-    
-    // Cleanup if current generation is a multiple of cleanup_frequency
-    return (current_generation % cleanup_frequency == 0);
-}
 
-void OnlineSeries::perform_periodic_cleanup(int32_t current_generation) {
-    if (should_cleanup_episodes(current_generation)) {
-        Log::info("Periodic cleanup requested at generation %d, but cleanup functionality has been removed\n", current_generation);
-        // print_episode_stats();
-    }
-}
 
 int32_t OnlineSeries::get_max_generation() {
     int32_t max_generation = total_num_sets - num_training_sets - num_validation_sets - num_test_sets;
     return max_generation;
+}
+
+void OnlineSeries::cleanup_old_training_history(const vector<int32_t>& good_genome_ids) {
+    if (good_genome_ids.empty()) {
+        Log::info("No good genomes provided, skipping training history cleanup\n");
+        return;
+    }
+    
+    // Find the smallest (oldest) good genome ID
+    int32_t min_good_genome_id = *std::min_element(good_genome_ids.begin(), good_genome_ids.end());
+    
+    Log::info("Smart cleanup: keeping training history for genomes >= %d (smallest good genome ID)\n", min_good_genome_id);
+    Log::info("Training history before cleanup: %d entries\n", (int32_t)training_history.size());
+    
+    // Remove training history for any genome ID smaller than the smallest good genome ID
+    auto it = training_history.begin();
+    int32_t removed_count = 0;
+    
+    while (it != training_history.end()) {
+        if (it->first < min_good_genome_id) {
+            Log::debug("Removing training history for genome ID %d (< %d)\n", it->first, min_good_genome_id);
+            it = training_history.erase(it);
+            removed_count++;
+        } else {
+            ++it;
+        }
+    }
+    
+    Log::info("Smart cleanup complete: removed %d entries, new size = %d\n", 
+             removed_count, (int32_t)training_history.size());
+    
+    // Log memory usage
+    Log::log_memory_usage("After training_history cleanup");
 }

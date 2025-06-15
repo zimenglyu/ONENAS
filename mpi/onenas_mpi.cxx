@@ -627,6 +627,10 @@ int main(int argc, char** argv) {
         if (rank ==0) {
             Log::major_divider(Log::INFO, "New generation");
             Log::info("Current generation: %d \n", current_generation);
+            
+            // Track memory usage at start of generation
+            Log::log_memory_usage("Generation " + std::to_string(current_generation) + " start");
+            
             master(max_rank, online_series, current_generation);           
         } else {
             worker(rank, online_series);
@@ -663,10 +667,16 @@ int main(int argc, char** argv) {
             online_series->update_scores(good_genome_ids, current_generation);
             online_series->write_scores_to_csv(current_generation, get_stats_directory());
             
-            // Cleanup episodes periodically based on configuration
-            online_series->perform_periodic_cleanup(current_generation);
+            // Smart cleanup: remove training history for genomes older than the oldest good genome
+            online_series->cleanup_old_training_history(good_genome_ids);
             
             onenas->update_log();
+            
+            // Track memory usage at end of generation with detailed stats
+            Log::log_memory_usage("Generation " + std::to_string(current_generation) + " end");
+            Log::info("MEMORY_STATS: Generation %d - Training history size: %d entries\n", 
+                     current_generation, (int32_t)online_series->get_training_history_size());
+            
             Log::info("Generation %d finished\n", current_generation);
         }
         
@@ -675,6 +685,13 @@ int main(int argc, char** argv) {
     // Close CSV files (only on master process)
     if (rank == 0) {
         close_csv_files();
+        
+        // Clean up memory on master process
+        Log::log_memory_usage("Before cleanup");
+        delete onenas;
+        delete online_series;
+        delete weight_update_method;
+        Log::log_memory_usage("After cleanup");
     }
     
     Log::set_id("main_" + to_string(rank));
@@ -684,5 +701,11 @@ int main(int argc, char** argv) {
     MPI_Finalize();
 
     delete time_series_sets;
+    
+    // Clear global vectors to free memory
+    time_series_inputs.clear();
+    time_series_outputs.clear();
+    time_series_index.clear();
+    
     return 0;
 }

@@ -53,21 +53,21 @@ int32_t TimeSeriesEpisode::get_training_score() const {
     return training_score;
 }
 
-void TimeSeriesEpisode::add_training_generation(int32_t generation_id) {
-    // Only add if not already present
-    if (std::find(training_generations.begin(), training_generations.end(), generation_id) == training_generations.end()) {
-        training_generations.push_back(generation_id);
-    }
-}
+// void TimeSeriesEpisode::add_training_generation(int32_t generation_id) {
+//     // Only add if not already present
+//     if (std::find(training_generations.begin(), training_generations.end(), generation_id) == training_generations.end()) {
+//         training_generations.push_back(generation_id);
+//     }
+// }
 
-void TimeSeriesEpisode::update_genome_performance(int32_t genome_id, int32_t score) {
-    genome_performance[genome_id] = score;
-    // update_access_time();
-}
+// void TimeSeriesEpisode::update_genome_performance(int32_t genome_id, int32_t score) {
+//     genome_performance[genome_id] = score;
+//     // update_access_time();
+// }
 
-const vector<int32_t>& TimeSeriesEpisode::get_training_generations() const {
-    return training_generations;
-}
+// const vector<int32_t>& TimeSeriesEpisode::get_training_generations() const {
+//     return training_generations;
+// }
 
 bool TimeSeriesEpisode::is_data_loaded() const {
     return is_loaded;
@@ -142,7 +142,7 @@ void TimeSeriesEpisode::print_stats() const {
     Log::info("Episode %d Stats:\n", episode_id);
     Log::info("  Training Score: %d\n", training_score);
     // Log::info("  Access Count: %d\n", access_count);
-    Log::info("  Training Generations: %d\n", static_cast<int32_t>(training_generations.size()));
+    // Log::info("  Training Generations: %d\n", static_cast<int32_t>(training_generations.size()));
     Log::info("  Loaded: %s\n", is_loaded ? "Yes" : "No");
     // Log::info("  Importance: %.3f\n", calculate_importance());
 }

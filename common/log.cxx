@@ -21,6 +21,15 @@ using std::thread;
 using std::cerr;
 using std::endl;
 
+#include <chrono>
+#include <string>
+#include <cstdlib>
+#include <unistd.h>
+#include <ios>
+#include <iostream>
+#include <fstream>
+#include <string>
+
 int32_t Log::std_message_level = INFO;
 int32_t Log::file_message_level = INFO;
 bool Log::write_to_file = false;
@@ -533,4 +542,44 @@ void Log::major_divider(int8_t level, const char* message) {
 
 void Log::minor_divider(int8_t level) {
     divider(level, DIVIDER_MINOR, nullptr);
+}
+
+long Log::get_memory_usage_kb() {
+    // Read memory usage from /proc/self/status on Linux/Unix systems
+    std::ifstream file("/proc/self/status");
+    std::string line;
+    
+    while (std::getline(file, line)) {
+        if (line.substr(0, 6) == "VmRSS:") {
+            // Extract the memory value (in kB)
+            std::string mem_str = line.substr(7); // Skip "VmRSS:\t"
+            size_t end_pos = mem_str.find(" kB");
+            if (end_pos != std::string::npos) {
+                mem_str = mem_str.substr(0, end_pos);
+                return std::stol(mem_str);
+            }
+        }
+    }
+    
+    // Fallback for non-Linux systems - return -1 to indicate unavailable
+    return -1;
+}
+
+void Log::log_memory_usage(const string& component_name) {
+    long memory_kb = get_memory_usage_kb();
+    if (memory_kb > 0) {
+        Log::info("MEMORY: %s using %ld KB (%.2f MB)\n", 
+                 component_name.c_str(), memory_kb, memory_kb / 1024.0);
+    } else {
+        Log::debug("MEMORY: Unable to get memory usage for %s\n", component_name.c_str());
+    }
+}
+
+void Log::log_memory_diff(const string& operation, long before_memory_kb) {
+    long after_memory_kb = get_memory_usage_kb();
+    if (before_memory_kb > 0 && after_memory_kb > 0) {
+        long diff_kb = after_memory_kb - before_memory_kb;
+        Log::info("MEMORY_DIFF: %s caused %+ld KB (%+.2f MB) change (before: %ld KB, after: %ld KB)\n",
+                 operation.c_str(), diff_kb, diff_kb / 1024.0, before_memory_kb, after_memory_kb);
+    }
 }

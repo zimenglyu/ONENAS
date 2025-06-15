@@ -20,8 +20,8 @@ class TimeSeriesEpisode {
     
     // Episode-specific training metrics
     int32_t training_score;
-    vector<int32_t> training_generations;  // generations this episode was used for training
-    map<int32_t, int32_t> genome_performance;  // genome_id -> performance score
+    // vector<int32_t> training_generations;  // generations this episode was used for training
+    // map<int32_t, int32_t> genome_performance;  // genome_id -> performance score
     
     // //  TODO: Memory management and access tracking
     bool is_loaded;

@@ -178,7 +178,7 @@ RNN_Genome* RNN_Genome::copy() {
 
     other->log_filename = log_filename;
 
-    other->generated_by_map = generated_by_map;
+
 
     other->initial_parameters = initial_parameters;
 
@@ -251,8 +251,7 @@ string RNN_Genome::print_statistics() {
         << get_node_count_str(MGU_NODE) << setw(12) << get_node_count_str(GRU_NODE) << setw(12)
         << get_node_count_str(DELTA_NODE) << setw(12) << get_node_count_str(LSTM_NODE) << setw(12)
         << get_node_count_str(ENARC_NODE) << setw(12) << get_node_count_str(ENAS_DAG_NODE) << setw(12)
-        << get_node_count_str(RANDOM_DAG_NODE) << setw(12) << get_node_count_str(-1)  //-1 does all nodes
-        << generated_by_string();
+        << get_node_count_str(RANDOM_DAG_NODE) << setw(12) << get_node_count_str(-1);  //-1 does all nodes
     return oss.str();
 }
 
@@ -340,35 +339,7 @@ int32_t RNN_Genome::get_node_count(int32_t node_type) {
 }
 
 
-void RNN_Genome::clear_generated_by() {
-    generated_by_map.clear();
-}
 
-void RNN_Genome::update_generation_map(map<string, int32_t>& generation_map) {
-    for (auto i = generated_by_map.begin(); i != generated_by_map.end(); i++) {
-        generation_map[i->first] += i->second;
-    }
-}
-
-string RNN_Genome::generated_by_string() {
-    ostringstream oss;
-    oss << "[";
-    bool first = true;
-    for (auto i = generated_by_map.begin(); i != generated_by_map.end(); i++) {
-        if (!first) {
-            oss << ", ";
-        }
-        oss << i->first << ":" << i->second;
-        first = false;
-    }
-    oss << "]";
-
-    return oss.str();
-}
-
-const map<string, int32_t>* RNN_Genome::get_generated_by_map() {
-    return &generated_by_map;
-}
 
 vector<string> RNN_Genome::get_input_parameter_names() const {
     return input_parameter_names;
@@ -914,13 +885,7 @@ double RNN_Genome::get_best_validation_mae() const {
     return best_validation_mae;
 }
 
-void RNN_Genome::set_generated_by(string type) {
-    generated_by_map[type]++;
-}
 
-int32_t RNN_Genome::get_generated_by(string type) {
-    return generated_by_map[type];
-}
 
 bool RNN_Genome::sanity_check() {
     return true;
@@ -3425,10 +3390,7 @@ void RNN_Genome::read_from_stream(istream& bin_istream) {
     // istringstream rng_0_1_iss(rng_0_1_str);
     // rng_0_1_iss >> rng_0_1;
 
-    string generated_by_map_str;
-    read_binary_string(bin_istream, generated_by_map_str, "generated_by_map");
-    istringstream generated_by_map_iss(generated_by_map_str);
-    read_map(generated_by_map_iss, generated_by_map);
+
 
     bin_istream.read((char*) &best_validation_mse, sizeof(double));
     bin_istream.read((char*) &best_validation_mae, sizeof(double));
@@ -3630,10 +3592,7 @@ void RNN_Genome::write_to_stream(ostream& bin_ostream) {
     string rng_0_1_str = rng_0_1_oss.str();
     write_binary_string(bin_ostream, rng_0_1_str, "rng_0_1");
 
-    ostringstream generated_by_map_oss;
-    write_map(generated_by_map_oss, generated_by_map);
-    string generated_by_map_str = generated_by_map_oss.str();
-    write_binary_string(bin_ostream, generated_by_map_str, "generated_by_map");
+
 
     bin_ostream.write((char*) &best_validation_mse, sizeof(double));
     bin_ostream.write((char*) &best_validation_mae, sizeof(double));
@@ -4210,8 +4169,10 @@ void RNN_Genome::transfer_to(
 
 void RNN_Genome::set_stochastic(bool stochastic) {
     for (RNN_Node_Interface* n : nodes) {
-        if (DNASNode* node = dynamic_cast<DNASNode*>(n); node != nullptr) {
-            node->set_stochastic(stochastic);
+        if (DNASNode* node = dynamic_cast<DNASNode*>(n)) {
+            if (node != nullptr) {
+                node->set_stochastic(stochastic);
+            }
         }
     }
 }

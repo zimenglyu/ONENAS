@@ -56,8 +56,6 @@ class RNN_Genome {
 
     // WeightRules* weight_rules;
 
-    map<string, int32_t> generated_by_map;
-
     vector<double> initial_parameters;
 
     double best_validation_mse;
@@ -114,12 +112,8 @@ class RNN_Genome {
         const vector<string>& _input_parameter_names, const vector<string>& _output_parameter_names
     );
 
-    string generated_by_string();
-
     string get_edge_count_str(bool recurrent);
     string get_node_count_str(int32_t node_type);
-
-    const map<string, int32_t>* get_generated_by_map();
 
     double get_avg_recurrent_depth() const;
 
@@ -188,11 +182,6 @@ class RNN_Genome {
 
     int32_t get_generation_id() const;
     void set_generation_id(int32_t generation_id);
-
-    void clear_generated_by();
-    void update_generation_map(map<string, int32_t>& generation_map);
-    void set_generated_by(string type);
-    int32_t get_generated_by(string type);
 
     RNN* get_rnn();
     vector<double> get_best_parameters() const;

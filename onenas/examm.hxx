@@ -37,8 +37,7 @@ class EXAMM {
     int32_t edge_innovation_count;
     int32_t node_innovation_count;
 
-    map<string, int32_t> inserted_from_map;
-    map<string, int32_t> generated_from_map;
+
 
     minstd_rand0 generator;
     uniform_real_distribution<double> rng_0_1;
@@ -64,9 +63,7 @@ class EXAMM {
     vector<int32_t> possible_node_types = {SIMPLE_NODE, JORDAN_NODE, ELMAN_NODE, UGRNN_NODE,
                                            MGU_NODE,    GRU_NODE,    DELTA_NODE, LSTM_NODE};
 
-    vector<string> op_log_ordering;
-    map<string, int32_t> inserted_counts;
-    map<string, int32_t> generated_counts;
+
 
     string output_directory;
     ofstream* log_file;
