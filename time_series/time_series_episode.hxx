@@ -23,15 +23,15 @@ class TimeSeriesEpisode {
     vector<int32_t> training_generations;  // generations this episode was used for training
     map<int32_t, int32_t> genome_performance;  // genome_id -> performance score
     
-    // Memory management and access tracking
+    // //  TODO: Memory management and access tracking
     bool is_loaded;
-    int32_t access_count;
-    double importance_score;
+    // int32_t access_count;
+    // double importance_score;
     
-    // For future disk-based storage (optional)
-    string data_file_path;
+    // // TODO: For future disk-based storage (optional)
+    // string data_file_path;
     
-    void update_access_time();
+    // void update_access_time();
 
    public:
     // Constructors

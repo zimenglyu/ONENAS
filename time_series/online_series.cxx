@@ -40,7 +40,7 @@ OnlineSeries::OnlineSeries(const int32_t _total_num_sets,const vector<string> &a
     start_score_tracking_generation = 50; // default value
     cleanup_frequency = 0; // default: no cleanup
     get_online_arguments(arguments);
-    
+    num_test_sets = 1;
     // Initialize episodes vector
     episodes.reserve(total_num_sets);
 }
@@ -392,4 +392,9 @@ void OnlineSeries::perform_periodic_cleanup(int32_t current_generation) {
         Log::info("Periodic cleanup requested at generation %d, but cleanup functionality has been removed\n", current_generation);
         // print_episode_stats();
     }
+}
+
+int32_t OnlineSeries::get_max_generation() {
+    int32_t max_generation = total_num_sets - num_training_sets - num_validation_sets - num_test_sets;
+    return max_generation;
 }

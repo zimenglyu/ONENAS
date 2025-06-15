@@ -548,7 +548,7 @@ int main(int argc, char** argv) {
     get_argument(arguments, "--generated_population_size", true, generated_population_size);
     get_argument(arguments, "--output_directory", true, output_directory);
 
-    Log::info("ONENAS will generate %d genomes per generation\n", generated_population_size * number_islands);
+    // Log::info("ONENAS will generate %d genomes per generation\n", generated_population_size * number_islands);
     Log::info("Output directory: %s\n", output_directory.c_str());
 
     TimeSeriesSets* time_series_sets = NULL;
@@ -574,15 +574,17 @@ int main(int argc, char** argv) {
     
     int32_t num_sets = time_series_inputs.size();
     Log::info("Time series number of sets after slicing: %d\n", num_sets);
-    total_generation = num_sets; // default to the number of sets
-    get_argument(arguments, "--total_generation", false, total_generation); 
-    if (total_generation > num_sets) {
-        Log::error("Total generation is greater than the number of sets, setting total generation to %d\n", num_sets);
-        total_generation = num_sets;
-    }
-    Log::info("Total generation is set to: %d, number of total sets: %d\n", total_generation, num_sets);
-    
     OnlineSeries* online_series = new OnlineSeries(num_sets, arguments);
+
+    int32_t max_generation = online_series->get_max_generation(); // default to the number of sets
+    total_generation = max_generation;
+    get_argument(arguments, "--total_generation", false, total_generation); 
+    if (total_generation > max_generation) {
+        Log::error("Total generation is greater than the number of sets, setting total generation to %d\n", max_generation);
+        total_generation = max_generation;
+    }
+    Log::info("Total generation is set to: %d\n", total_generation);
+
     
     // Initialize episode management system
     Log::info("Initializing episode management system\n");
@@ -621,8 +623,6 @@ int main(int argc, char** argv) {
 
     for (int32_t  current_generation = 0; current_generation < total_generation; current_generation ++) {
         online_series->set_current_index(current_generation);
-        // Log::info("current generation: %d\n", current_generation);
-
 
         if (rank ==0) {
             Log::major_divider(Log::INFO, "New generation");

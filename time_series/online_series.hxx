@@ -37,6 +37,7 @@ class OnlineSeries {
         vector< int32_t > avalibale_training_index;
         int32_t num_training_sets;
         int32_t num_validation_sets;
+        int32_t num_test_sets;
         int32_t start_score_tracking_generation; // generation number to start updating scores, default 20
         string get_training_data_method;
         map<int, vector<int32_t>> training_history; // key: generation id, value: training index
@@ -88,6 +89,8 @@ class OnlineSeries {
         
         // Getter for training data method
         string get_training_method() const { return get_training_data_method; }
+
+        int32_t get_max_generation();
 };
 
 
