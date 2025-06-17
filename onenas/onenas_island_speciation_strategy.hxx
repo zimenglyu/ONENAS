@@ -273,7 +273,11 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
 
         void set_erased_islands_status();
         
-        void finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids);
+        // Base class implementation - required by SpeciationStrategy interface
+        void finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) override;
+        
+        // New PER-specific method that returns elite genomes
+        vector<RNN_Genome*> finalize_generation_with_genomes(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);
 
         void evaluate_elite_population(const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output);
         void select_elite_population();

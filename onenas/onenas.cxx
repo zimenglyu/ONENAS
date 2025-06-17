@@ -950,9 +950,9 @@ void ONENAS::reduce_add_mutation_rates(double factor) {
              add_edge_rate, add_recurrent_edge_rate, add_node_rate);
 }
 
-void ONENAS::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) {
+void ONENAS::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
     Log::info("ONENAS:Finalizing generation %d\n", current_generation);
     // string filename = output_directory + "/generation_" + std::to_string(current_generation);
 
-    speciation_strategy->finalize_generation(current_generation, validation_input, validation_output, test_input, test_output, good_genome_ids);
+    speciation_strategy->finalize_generation(current_generation, validation_input, validation_output, test_input, test_output);
 }

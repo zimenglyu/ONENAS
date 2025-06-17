@@ -148,7 +148,7 @@ class NeatSpeciationStrategy : public SpeciationStrategy {
     void initialize_population(function<void(int32_t, RNN_Genome*)>& mutate, WeightRules* weight_rules);
     RNN_Genome* get_seed_genome();
     void save_entire_population(string output_path);
-    void finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids);
+    void finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output);
 };
 
 #endif

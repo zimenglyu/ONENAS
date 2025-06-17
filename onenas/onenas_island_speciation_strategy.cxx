@@ -660,12 +660,39 @@ void OneNasIslandSpeciationStrategy::initialize_population(function<void(int32_t
     Log::info("OneNAS Speciation Strategy: Initialized %d islands\n", islands.size());
 }
 
-void OneNasIslandSpeciationStrategy::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output, vector<int32_t>& good_genome_ids) {
-    Log::info("OneNAS Speciation Strategy: Finalizing the generation\n");
+void OneNasIslandSpeciationStrategy::finalize_generation(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
+    // Just call our PER-specific method since we no longer need to extract IDs
+    vector<RNN_Genome*> elite_genomes = finalize_generation_with_genomes(current_generation, validation_input, validation_output, test_input, test_output);
+    
+    // Clean up the elite genome copies since they're not needed by the base class interface
+    for (RNN_Genome* genome : elite_genomes) {
+        if (genome != NULL) {
+            delete genome;
+        }
+    }
+    
+    Log::info("Base class finalize_generation: completed for generation %d\n", current_generation);
+}
+
+vector<RNN_Genome*> OneNasIslandSpeciationStrategy::finalize_generation_with_genomes(int32_t current_generation, const vector< vector< vector<double> > > &validation_input, const vector< vector< vector<double> > > &validation_output, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {
+    Log::info("OneNAS Speciation Strategy: Finalizing generation %d\n", current_generation);
     evaluate_elite_population(validation_input, validation_output);
     select_elite_population();
     generation_check();
-    get_elite_population_ids(good_genome_ids);
+    
+    // Collect all elite genomes from all islands
+    vector<RNN_Genome*> elite_genomes;
+    for (int32_t i = 0; i < number_of_islands; i++) {
+        vector<RNN_Genome*> island_elites = islands[i]->get_genomes();
+        for (RNN_Genome* genome : island_elites) {
+            if (genome != NULL) {
+                // Create a copy of the genome for return
+                elite_genomes.push_back(genome->copy());
+            }
+        }
+    }
+    
+    Log::info("OneNAS: Collected %d elite genomes from %d islands\n", (int32_t)elite_genomes.size(), number_of_islands);
     
     // Safely update global_best_genome with proper memory management
     RNN_Genome* new_best_genome = select_global_best_genome();
@@ -679,7 +706,7 @@ void OneNasIslandSpeciationStrategy::finalize_generation(int32_t current_generat
         
         // Create a copy of the new best genome to own the memory
         global_best_genome = new_best_genome->copy();
-        Log::info("Updated global_best_genome to generation %d with validation MSE: %f\n", 
+        Log::info("Updated global_best_genome to generation %d with validation MSE: %.6f\n", 
                  global_best_genome->get_generation_id(), global_best_genome->get_best_validation_mse());
     } else {
         Log::warning("No best genome found in any island - global_best_genome remains unchanged\n");
@@ -719,6 +746,11 @@ void OneNasIslandSpeciationStrategy::finalize_generation(int32_t current_generat
     if (repopulation_frequency != 0) {
         do_repopulation(current_generation);
     }
+    
+    // Return elite genomes for priority updates
+    Log::info("Returning %d elite genomes for priority updates\n", (int32_t)elite_genomes.size());
+    
+    return elite_genomes;
 }
 
 void OneNasIslandSpeciationStrategy::do_repopulation(int32_t current_generation) {
@@ -851,17 +883,6 @@ void OneNasIslandSpeciationStrategy::select_elite_population() {
     }
     
 }
-
-void OneNasIslandSpeciationStrategy::get_elite_population_ids(vector<int32_t>& good_genome_ids) {
-    for (int i = 0; i < number_of_islands; i++) {
-        islands[i] -> get_elite_population_ids(good_genome_ids);
-    }
-    if (good_genome_ids.size() == 0) {
-        Log::fatal("No good genome ids found\n");
-        exit(1);
-    }
-}
-
 
 RNN_Genome* OneNasIslandSpeciationStrategy::get_seed_genome() {
     return seed_genome;

@@ -350,24 +350,19 @@ void master(int32_t max_rank, OnlineSeries* online_series, int32_t current_gener
                 onenas_mutex.unlock();
 
                 if (genome != NULL) {
-                    // Master generates training indices with updated scores
+                    // Master generates training indices using PER system
                     vector<int32_t> master_training_index;
                     online_series->get_training_index(master_training_index);
                     
-                    // Record training history immediately when training indices are generated
-                    int32_t generation_id = genome->get_generation_id();
-                    online_series->add_training_history(generation_id, master_training_index);
-                    Log::info("Master: Recorded training history for genome %d with %d indices\n", 
-                             generation_id, master_training_index.size());
-                    
                     // Attach training indices to genome before sending to worker
+                    int32_t generation_id = genome->get_generation_id();
                     genome->set_training_indices(master_training_index);
                     
                     // Write training indices to CSV
                     write_training_indices_to_csv(generation_id, current_generation, master_training_index);
                     
                     Log::info("Master: Generated %d training indices for genome %d, sending to worker: %d\n", 
-                             master_training_index.size(), genome->get_generation_id(), source);
+                             master_training_index.size(), generation_id, source);
                     Log::debug("sending genome to: %d\n", source);
                     send_genome_to(source, genome);
 
@@ -464,9 +459,8 @@ void worker(int32_t rank, OnlineSeries* online_series) {
             genome->evaluate_online(current_validation_inputs, current_validation_outputs);
             Log::release_id(log_id);
 
-            // Training indices were already set by master and used for training
-            // No need to call add_training_history here since master will handle it
-            // No need to set_training_indices again since they're already attached
+            // Training indices were provided by master and used for training
+            // No training history tracking needed with PER system
 
             // go back to the worker's log for MPI communication
             Log::set_id("worker_" + to_string(rank));
@@ -672,25 +666,45 @@ int main(int argc, char** argv) {
                 current_validation_inputs, current_validation_outputs
             );
 
-            vector<int32_t> good_genome_ids;
-            onenas->finalize_generation(current_generation, current_validation_inputs, current_validation_outputs, current_test_inputs, current_test_outputs, good_genome_ids);
+            // Finalize generation and get elite genomes for PER updates
+            OneNasIslandSpeciationStrategy* onenas_strategy = dynamic_cast<OneNasIslandSpeciationStrategy*>(onenas->get_speciation_strategy());
+            vector<RNN_Genome*> elite_genomes;
+            if (onenas_strategy != nullptr) {
+                elite_genomes = onenas_strategy->finalize_generation_with_genomes(current_generation, current_validation_inputs, current_validation_outputs, current_test_inputs, current_test_outputs);
+            } else {
+                Log::error("Failed to cast speciation strategy to OneNasIslandSpeciationStrategy\n");
+                // Fallback to original method
+                onenas->finalize_generation(current_generation, current_validation_inputs, current_validation_outputs, current_test_inputs, current_test_outputs);
+            }
             
-            // Updated training history flow:
-            // 1. When training indices were generated (earlier in master()), we recorded training_history[generation_id] = episode_ids
-            // 2. finalize_generation() returns good_genome_ids (which are generation IDs of elite genomes)
-            // 3. For each good genome, we look up which episodes it used and increment their scores by +1
-            online_series->update_scores(good_genome_ids, current_generation);
-            online_series->write_scores_to_csv(current_generation, get_stats_directory());
+            Log::info("=== MPI Generation %d Finalization Complete ===\n", current_generation);
+            Log::info("Received %d elite genomes from finalize_generation\n", (int32_t)elite_genomes.size());
             
-            // Smart cleanup: remove training history for genomes older than the oldest good genome
-            online_series->cleanup_old_training_history(good_genome_ids);
+            // Update episode priorities using all elite genomes (only for PER method)
+            if (online_series->get_training_method().compare("PER") == 0) {
+                Log::info("Training method is PER - updating episode priorities with elite genomes\n");
+                online_series->update_episode_priorities(elite_genomes, current_generation);
+                
+                // Write priority statistics to CSV (PER method only)
+                online_series->write_priorities_to_csv(current_generation, get_stats_directory());
+            } else {
+                Log::debug("Training method is %s - skipping priority updates\n", online_series->get_training_method().c_str());
+            }
+            
+            // Clean up elite genome copies (they were created in finalize_generation)
+            for (RNN_Genome* genome : elite_genomes) {
+                if (genome != NULL) {
+                    delete genome;
+                }
+            }
+            elite_genomes.clear();
+            
+            Log::info("MPI Generation %d priority update complete\n", current_generation);
             
             onenas->update_log();
             
-            // Track memory usage at end of generation with detailed stats
+            // Track memory usage at end of generation
             Log::log_memory_usage("Generation " + std::to_string(current_generation) + " end");
-            Log::info("MEMORY_STATS: Generation %d - Training history size: %d entries\n", 
-                     current_generation, (int32_t)online_series->get_training_history_size());
             
             Log::info("Generation %d finished\n", current_generation);
         }

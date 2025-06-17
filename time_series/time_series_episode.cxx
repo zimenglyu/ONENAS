@@ -10,11 +10,11 @@ using std::ofstream;
 using std::ifstream;
 
 TimeSeriesEpisode::TimeSeriesEpisode(int32_t id) 
-    : episode_id(id), training_score(1), is_loaded(false) {
+    : episode_id(id), validation_mse(1.0), availability_generation(0), is_loaded(false) {
 }
 
 TimeSeriesEpisode::TimeSeriesEpisode(int32_t id, const vector<vector<double>>& _inputs, const vector<vector<double>>& _outputs)
-    : episode_id(id), inputs(_inputs), outputs(_outputs), training_score(1), is_loaded(true) {
+    : episode_id(id), inputs(_inputs), outputs(_outputs), validation_mse(1.0), availability_generation(0), is_loaded(true) {
 }
 
 TimeSeriesEpisode::~TimeSeriesEpisode() {
@@ -44,13 +44,33 @@ void TimeSeriesEpisode::set_data(const vector<vector<double>>& _inputs, const ve
     // update_access_time();
 }
 
-void TimeSeriesEpisode::update_training_score(int32_t increment) {
-    training_score += increment;
-    // update_access_time();
+void TimeSeriesEpisode::set_validation_mse(double mse) {
+    validation_mse = mse;
 }
 
-int32_t TimeSeriesEpisode::get_training_score() const {
-    return training_score;
+double TimeSeriesEpisode::get_validation_mse() const {
+    return validation_mse;
+}
+
+void TimeSeriesEpisode::set_availability_generation(int32_t generation) {
+    availability_generation = generation;
+}
+
+int32_t TimeSeriesEpisode::get_availability_generation() const {
+    return availability_generation;
+}
+
+double TimeSeriesEpisode::calculate_priority(int32_t current_generation, double alpha, double lambda, double epsilon) const {
+    // Primary priority based on validation MSE (lower MSE = higher priority)
+    double base_priority = 1.0 / (validation_mse + epsilon);
+    
+    // Alternative priority calculation (commented out)
+    // double base_priority = exp(-alpha * validation_mse);
+    
+    // Apply temporal decay: episodes become less important over time
+    double time_decay = exp(-lambda * (current_generation - availability_generation));
+    
+    return base_priority * time_decay;
 }
 
 // void TimeSeriesEpisode::add_training_generation(int32_t generation_id) {
@@ -140,7 +160,8 @@ int32_t TimeSeriesEpisode::get_episode_id() const {
 
 void TimeSeriesEpisode::print_stats() const {
     Log::info("Episode %d Stats:\n", episode_id);
-    Log::info("  Training Score: %d\n", training_score);
+    Log::info("  Validation MSE: %.6f\n", validation_mse);
+    Log::info("  Availability Generation: %d\n", availability_generation);
     // Log::info("  Access Count: %d\n", access_count);
     // Log::info("  Training Generations: %d\n", static_cast<int32_t>(training_generations.size()));
     Log::info("  Loaded: %s\n", is_loaded ? "Yes" : "No");
