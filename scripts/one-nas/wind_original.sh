@@ -32,7 +32,6 @@
 # --num_training_sets <int>                   : Number of training sets per generation
 # --num_validation_sets <int>                : Number of validation sets per generation
 # --get_train_data_by <method>                : Training data selection: 'Uniform' or 'PER' (Prioritized Experience Replay)
-# --start_score_tracking_generation <int>     : Generation to start tracking episode scores (default: 50)
 # --total_generation <int>                    : Total number of generations to run
 
 # EVOLUTION/SPECIATION ARGUMENTS:
@@ -111,8 +110,6 @@
 # ISLAND REPOPULATION ARGUMENTS:
 # --repopulation_frequency <int>              : Frequency for island repopulation events
 
-# --temperature <float>                        : Tempered sampling temperature τ for PER (default: 1.0)
-
 #=============================================================================
 
 cd build
@@ -125,13 +122,13 @@ OUTPUT_PARAMETERS="P_avg"
 for i in {0..4}
 do
 
-exp_name="../results_2/wind_original/$i"
+exp_name="../results_3/wind_original/$i"
 mkdir -p $exp_name
-echo "Running ONE-NAS with NEW EPISODE MANAGEMENT system on wind turbine dataset"
+echo "Running ONE-NAS with Uniform sampling on wind turbine dataset"
 echo "Results will be saved to: "$exp_name
 
 
-mpirun -np 12 ./mpi/onenas_mpi \
+mpirun -np 16 ./mpi/onenas_mpi \
 --training_filenames ../datasets/2020_wind_engine/turbine_R80711_2017-2020_[1-9].csv ../datasets/2020_wind_engine/turbine_R80711_2017-2020_1[0-9].csv ../datasets/2020_wind_engine/turbine_R80711_2017-2020_2[0-9].csv  ../datasets/2020_wind_engine/turbine_R80711_2017-2020_3[0-1].csv \
 --time_offset 1 \
 --input_parameter_names $INPUT_PARAMETERS \
@@ -140,8 +137,8 @@ mpirun -np 12 ./mpi/onenas_mpi \
 --bp_iterations 10 \
 --output_directory $exp_name \
 --num_mutations 1 \
---time_series_length 25 \
---num_validation_sets 50 \
+--time_series_length 40 \
+--num_validation_sets 25 \
 --num_training_sets 300  \
 --get_train_data_by Uniform \
 --speciation_method onenas \
@@ -149,12 +146,10 @@ mpirun -np 12 ./mpi/onenas_mpi \
 --generated_population_size 10 \
 --elite_population_size 10 \
 --possible_node_types simple UGRNN MGU GRU delta LSTM \
---start_score_tracking_generation 500 \
 --normalize min_max \
 --compare_with_naive \
 --control_size_method reduce_add_mutation \
 --std_message_level INFO \
---file_message_level INFO \
---temperature 1.0 
+--file_message_level INFO
 
 done

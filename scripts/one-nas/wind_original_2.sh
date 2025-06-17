@@ -125,13 +125,13 @@ OUTPUT_PARAMETERS="P_avg"
 for i in {0..4}
 do
 
-exp_name="../results_2/wind_original_2/$i"
+exp_name="../results_3/wind_original_2/$i"
 mkdir -p $exp_name
 echo "Running ONE-NAS with NEW EPISODE MANAGEMENT system on wind turbine dataset"
 echo "Results will be saved to: "$exp_name
 
 
-mpirun -np 12 ./mpi/onenas_mpi \
+mpirun -np 16 ./mpi/onenas_mpi \
 --training_filenames ../datasets/2020_wind_engine/turbine_R80711_2017-2020_[1-9].csv ../datasets/2020_wind_engine/turbine_R80711_2017-2020_1[0-9].csv ../datasets/2020_wind_engine/turbine_R80711_2017-2020_2[0-9].csv  ../datasets/2020_wind_engine/turbine_R80711_2017-2020_3[0-1].csv \
 --time_offset 1 \
 --input_parameter_names $INPUT_PARAMETERS \
@@ -140,8 +140,8 @@ mpirun -np 12 ./mpi/onenas_mpi \
 --bp_iterations 10 \
 --output_directory $exp_name \
 --num_mutations 1 \
---time_series_length 25 \
---num_validation_sets 50 \
+--time_series_length 40 \
+--num_validation_sets 25 \
 --num_training_sets 300  \
 --get_train_data_by Uniform \
 --speciation_method onenas \

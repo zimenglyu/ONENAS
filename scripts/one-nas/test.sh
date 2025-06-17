@@ -136,9 +136,9 @@ mpirun -np 2 ./mpi/onenas_mpi \
 --bp_iterations 1 \
 --output_directory $exp_name \
 --num_mutations 1 \
---time_series_length 25 \
---num_validation_sets 20 \
---num_training_sets 100  \
+--time_series_length 40 \
+--num_validation_sets 25 \
+--num_training_sets 300  \
 --get_train_data_by PER \
 --speciation_method onenas \
 --repopulation_frequency 5 \
