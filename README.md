@@ -1,5 +1,3 @@
-![DS2L Banner](images/lab_logo_banner.png)
-
 # ONE-NAS: Online NeuroEvolution-based Neural Architecture Search
 
 ONE-NAS (Online NeuroEvolution-based Neural Architecture Search) is the first evolutionary algorithm capable of designing and training RNNs in real-time as data arrives in an online fashion. Unlike traditional time series forecasting methods that require offline pre-training, ONE-NAS continuously evolves both the structure and weights of Recurrent Neural Networks in response to streaming data. The algorithm utilizes island-based evolutionary strategies with repopulation techniques to maintain diversity and prevent catastrophic forgetting, while training new genomes on subsets of historical data to handle data drift effectively.
@@ -15,9 +13,6 @@ Implemented in C++ and built on the same foundation as EXAMM, ONE-NAS is designe
 2. Zimeng Lyu, Travis Desell. **"ONE-NAS: An Online NeuroEvolution based Neural Architecture Search for Time Series Forecasting,"** GECCO 2022.
 
 
-
-
-
 # Getting Started and Prerequisites
 
 ONENAS has been developed to compile using CMake. To use the MPI version, a version of MPI (such as OpenMPI) should be installed.
@@ -31,21 +26,6 @@ brew install libtiff
 brew install libpng
 brew install clang-format
 xcode-select --install
-```
-
-## RIT Cluster Setup
-```bash
-# GCC (9.3)
-spack load gcc/lhqcen5
-
-# CMake
-spack load cmake/pbddesj
-
-# OpenMPI
-spack load openmpi/xcunp5q
-
-# libtiff
-spack load libtiff/gnxev37
 ```
 
 ## Building
@@ -66,9 +46,6 @@ ONENAS can be run in two different modes - MPI (distributed) or multithreaded. F
 sh scripts/one-nas/coal_mpi.sh
 ```
 
-
-![DS2L Banner](images/lab_logo_banner.png)
-
 ---
-© 2025 Distributed Data Science Systems Lab (DS2L), Rochester Institute of Technology. All Rights Reserved.
+© 2025 All Rights Reserved.
 
