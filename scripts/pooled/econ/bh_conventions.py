@@ -83,18 +83,43 @@ def main():
             for r, v in zip(rows, fn(panel, rows)):
                 acc[name].setdefault(panel.dates[r], []).append(v)
 
-    print(f"{'convention':10s}" + "".join(f"{y:>9s}" for y in YEARS)
+    print(f"{'convention':14s}" + "".join(f"{y:>9s}" for y in YEARS)
           + f"{'2020-24':>10s}{'Sharpe':>9s}{'MDD%':>8s}")
-    for name in ("prior", "total"):
+    for name, label in (("prior", "prior-hold"), ("total", "total-hold")):
         dates = sorted(acc[name])
         daily = np.array([np.mean(acc[name][d]) for d in dates])
         cells = []
         for y in YEARS:
             m = np.array([d.startswith(y) for d in dates])
             cells.append(100 * daily[m].sum())
-        line = f"{name:10s}" + "".join(f"{c:>+9.1f}" for c in cells)
+        line = f"{label:14s}" + "".join(f"{c:>+9.1f}" for c in cells)
         print(line + f"{100 * daily.sum():>+10.1f}"
               f"{sharpe(daily):>9.2f}{mdd(daily):>8.1f}")
+
+    # The prior study's ACTUAL per-year method: the position is rebuilt at
+    # the start of every year and the yearly cells are summed, so a year's
+    # return is never scaled by how the position did in earlier years.
+    # This is what produced the published -10.1 / +11.2 / +6.8 cells, and
+    # it is a different number from holding one position across the span.
+    per_year = {y: [] for y in YEARS}
+    daily_restart = {}
+    for s in SETS:
+        panel = Panel(os.path.join(PANELS, s), "RET_CS")
+        for y in YEARS:
+            rows = panel.rows_between(max(f"{y}-01-01", W0), f"{y}-12-31")
+            if not rows:
+                continue
+            ser = prior_series(panel, rows)
+            per_year[y].append(100 * float(np.sum(ser)))
+            for r, v in zip(rows, ser):
+                daily_restart.setdefault(panel.dates[r], []).append(v)
+    dates = sorted(daily_restart)
+    dr = np.array([np.mean(daily_restart[d]) for d in dates])
+    cells = [float(np.mean(per_year[y])) for y in YEARS]
+    print(f"{'prior-yearly':14s}" + "".join(f"{c:>+9.1f}" for c in cells)
+          + f"{sum(cells):>+10.1f}{sharpe(dr):>9.2f}{mdd(dr):>8.1f}")
+    print("\nprior-yearly is the published convention: position rebuilt each\n"
+          "January, yearly cells summed (not compounded).")
 
 
 if __name__ == "__main__":
