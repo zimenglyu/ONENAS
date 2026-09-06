@@ -1,7 +1,14 @@
 % 05-Results.tex — results exhibits, AAAI 2027 two-column layout.
-% Needs only packages already in the template preamble (graphicx, booktabs,
-% caption). Wide exhibits use table*/figure*; notes are plain footnotesize
-% lines (no threeparttable). Figure files: net_curves.pdf, islands_scaling.pdf.
+%
+% AAAI COMPLIANCE: uses only packages already loaded by the template
+% (graphicx, booktabs, caption) — no threeparttable, no added packages —
+% and none of the commands aaai2027 forbids: no \setlength, \addtolength,
+% \vspace, \vskip, \newpage, \pagebreak, \clearpage, \linespread,
+% \baselinestretch or \tiny. Column padding is trimmed with @{} in the
+% column spec rather than by resetting \tabcolsep. Wide exhibits use
+% table*/figure*; table notes are plain footnotesize lines.
+%
+% Figure files: net_curves.pdf, islands_scaling.pdf.
 \providecommand{\se}[1]{{\scriptsize$\pm$#1}}
 
 \section{Results}
@@ -9,7 +16,7 @@
 \begin{table*}[t]
 \centering
 \small
-\begin{tabular}{lrrrr}
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
  & 2022 & 2023 & 2024 & 2022--24 \\
 \midrule
@@ -55,8 +62,7 @@ start). Buy-and-hold follows the prior-study benchmark convention.}
 \begin{table}[t]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lrr}
+\begin{tabular}{@{}lrr@{}}
 \toprule
 Comparison & $\Delta$net & paired $t$ \\
 \midrule
@@ -82,8 +88,7 @@ and each other arm, over the (panel, seed) cells the two arms share,
 \begin{table}[t]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{2pt}
-\begin{tabular}{lrrrrr}
+\begin{tabular}{@{}l@{\hspace{3pt}}r@{\hspace{3pt}}r@{\hspace{3pt}}r@{\hspace{3pt}}r@{\hspace{3pt}}r@{}}
 \toprule
 Arm & $1\times$ & $2\times$ & $3\times$ & $5\times$ & B/E$^{a}$ \\
 \midrule
@@ -104,15 +109,14 @@ Table~\ref{tab:window}. $^{a}$Break-even: the cost multiple at which net
 return reaches zero.\par}
 \caption{Cost sensitivity: net return (\%) on 2022--2024 as the realised
 per-name transaction cost is scaled by the stated multiple. ONE-NAS
-tolerates the harshest cost assumption, and does so while turning over
-least.}
+tolerates the harshest cost assumption of any arm.}
 \label{tab:costs}
 \end{table}
 
 \begin{table*}[t]
 \centering
 \small
-\begin{tabular}{llrrrr}
+\begin{tabular}{@{}llrrrr@{}}
 \toprule
 Fleet & Window & Single & Ensemble & $\Delta$net ($t$) & $\Delta$Sharpe ($t$) \\
 \midrule
@@ -154,8 +158,7 @@ adopted.}
 \begin{table}[t]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{lrrrr}
+\begin{tabular}{@{}l@{\hspace{4pt}}r@{\hspace{4pt}}r@{\hspace{4pt}}r@{\hspace{4pt}}r@{}}
 \toprule
 Arm & bps/day & \%/yr & NW $t$ & Beta \\
 \midrule
@@ -176,8 +179,7 @@ the Fama--French three factors plus momentum, 2020--2024, Newey--West lag
 \begin{table}[t]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{lccccc}
+\begin{tabular}{@{}l@{\hspace{3pt}}c@{\hspace{3pt}}c@{\hspace{3pt}}c@{\hspace{3pt}}c@{\hspace{3pt}}c@{}}
 \toprule
 Fleet & $N$ & $\rho$ & Member & Ensemble & Predicted \\
 \midrule
@@ -196,8 +198,7 @@ equicorrelated averaging prediction $m\sqrt{N/(1+(N-1)\rho)}$.}
 \begin{table}[t]
 \centering
 \small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lr@{\quad}lr}
+\begin{tabular}{@{}lr@{\quad}lr@{}}
 \toprule
 Configuration & $\Delta$net & Configuration & $\Delta$net \\
 \midrule
@@ -208,22 +209,22 @@ Target: 5-day CS     & $+4.5$  & PER $\alpha$ 0.8   & $+11.7$ \\
 5-day CS + IC-gated  & $+1.8$  & PER $\lambda{\times}3$ & $+20.6$ \\
 Elite 5 / gen 10     & $+9.6$  & BP epochs 20       & $+12.5$ \\
 Elite 5 / gen 15     & $+11.1$ & Repop.\ 25         & $+7.0$  \\
-Repop.\ 100          & $+9.6$  &                    &         \\
+Repop.\ 100          & $+9.6$  & PER off (uniform)  & $+9.3$  \\
 \bottomrule
 \end{tabular}
 \par\smallskip
-{\footnotesize Mean $+8.2$; $n{=}6$ runs per cell (2 panels $\times$ 3
+{\footnotesize Mean $+8.3$; $n{=}6$ runs per cell (2 panels $\times$ 3
 seeds).\par}
 \caption{Ensembling gain (ensemble $-$ single champion, within-run, net \%
 on 2016--2019) inside every trained hyperparameter configuration; positive
-in 15/15 cells.}
+in 16/16 cells.}
 \label{tab:invariance}
 \end{table}
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lr}
+\begin{tabular}{@{}lr@{}}
 \toprule
 Population evolving online since 2020-01 & $+26.5$ \\
 Cold start at 2022-01                     & $+12.3$ \\
@@ -237,8 +238,7 @@ configuration.}
 \begin{table}[t]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{ll}
+\begin{tabular}{@{}l@{\hspace{4pt}}l@{}}
 \toprule
 Hyperparameter & Value \\
 \midrule
@@ -261,6 +261,8 @@ Warm-up generations & 50 \\
 \bottomrule
 \end{tabular}
 \caption{ONE-NAS hyperparameter settings (selected on 2016--2019
-validation data, disjoint from the evaluation span).}
+validation data, disjoint from the evaluation span). Replay sampling
+ablated: PER vs.\ uniform shows no advantage on the tuning objective
+($\Delta$IC $-0.0024$, $t{=}-1.9$).}
 \label{tab:hps}
 \end{table}
