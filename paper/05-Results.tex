@@ -1,7 +1,7 @@
-% 05-Results.tex — results exhibits, AAAI 2027 two-column layout.
+% 05-Results.tex -- results exhibits, AAAI 2027 two-column layout.
 %
 % AAAI COMPLIANCE: uses only packages already loaded by the template
-% (graphicx, booktabs, caption) — no threeparttable, no added packages —
+% (graphicx, booktabs, caption) -- no threeparttable, no added packages --
 % and none of the commands aaai2027 forbids: no \setlength, \addtolength,
 % \vspace, \vskip, \newpage, \pagebreak, \clearpage, \linespread,
 % \baselinestretch or \tiny. Column padding is trimmed with @{} in the
@@ -10,6 +10,12 @@
 %
 % Figure files: net_curves.pdf, islands_scaling.pdf.
 \providecommand{\se}[1]{{\scriptsize$\pm$#1}}
+% Fallbacks so this file compiles even if the preamble's \usepackage{booktabs}
+% line is commented out (it ships commented in some template revisions).
+% These are no-ops when booktabs is loaded.
+\providecommand{\toprule}{\hline}
+\providecommand{\midrule}{\hline}
+\providecommand{\bottomrule}{\hline}
 
 \section{Results}
 
