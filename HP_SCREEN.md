@@ -175,7 +175,35 @@ bp20_eval.csv remaining in the repository, referenced from the paper. No
 result is altered; the selected configuration is the registered primary,
 which predates and is unaffected by every look recorded here.
 
+## DECLARED WIDTH-CURVE REFRESH (2026-09-06, committed before launch)
+
+The published width curve (paper Fig. islands_scaling) was measured at the
+irregular widths 8/16/20/40. By author decision it is re-measured on a
+regular grid, 10/20/30/40/50/60 islands, for presentation. Terms, fixed now:
+
+- PURPOSE IS DESCRIPTIVE. The headline width is 40 islands, fixed by
+  Amendment 6 on the protocol-symmetric 2016-2019 selection. This refresh is
+  a figure, not a selection. No width measured here -- including 50 and 60,
+  which are new territory -- becomes headline-eligible on the strength of
+  this curve. Adoption of any other width requires the tuning-span
+  (2016-2019) selection plus a dated PRIMARY.md amendment, exactly as bp20
+  required and failed.
+- Span and clock: the eval clock (2020-01-01..2024-12-31, NTW 712/695/702/738,
+  ~300 generations), matching the existing 8/16/20/40 sweep this replaces.
+  This is an eval-span look and is disclosed as such wherever it appears.
+- Configuration: the frozen primary in every respect except --number_islands.
+- Replication: panels set1-set4, seeds 42-51 (10 seeds x 4 panels per width),
+  matching the existing sweep's replication.
+- Widths 20 and 40 are NOT re-run; the existing n=10 fleets at those widths
+  are the identical configuration on the identical clock and are reused. New
+  runs cover 10, 30, 50, 60 only (160 runs).
+- Reported in full regardless of outcome, including the case where a wider
+  setting beats 40.
+
 ## Budget
 
 15 configurations x 2 panels x 3 seeds = 90 runs at the tune16 clock (201
 generations, roughly 2/3 of an eval-span run each).
+
+Width-curve refresh (2026-09-06): 4 new widths x 4 panels x 10 seeds = 160
+runs at the eval clock, ~13k SU.
