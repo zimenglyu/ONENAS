@@ -151,10 +151,25 @@ def main():
     pd.DataFrame(out_rows).to_csv("results_econ/factor_alphas_final.csv",
                                   index=False)
 
-    # ---------------- F1: cumulative net curves (2022-24, the paper's
-    # evaluation window; books restarted at the window start so endpoints
-    # match the 2022-24 table)
-    series = build_series("2022-01-01", "2024-12-31")
+    # ---------------- per-year net by arm, over the registered span.
+    # The buy&hold row of the paper's window table comes from here: its
+    # prior-paper convention (raw PRC, no dividends, no costs) lives in
+    # build_series and is not reimplemented.
+    print("\n# per-year net % (pooled daily, arithmetic sum)", flush=True)
+    yearly = {}
+    for arm, s in series.items():
+        idx = pd.to_datetime(s.index)
+        yearly[arm] = {str(y): float(100 * s.values[idx.year == y].sum())
+                       for y in range(2020, 2025)}
+        yearly[arm]["2020-24"] = float(100 * s.values.sum())
+        cells = "".join(f"{yearly[arm][str(y)]:>+9.1f}"
+                        for y in range(2020, 2025))
+        print(f"{arm:26s}{cells}{yearly[arm]['2020-24']:>+11.1f}", flush=True)
+    pd.DataFrame(yearly).T.to_csv("results_econ/yearly_by_arm.csv")
+
+    # ---------------- F1: cumulative net curves over the full registered
+    # evaluation span (2020-2024), matching the window table.
+    series = build_series("2020-01-01", "2024-12-31")
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -194,6 +209,7 @@ def main():
                     fontsize=8, va="center", annotation_clip=False)
     ax.axhline(0, color="#8b8d92", lw=1)
     ax.set_ylabel("Cumulative net return (%)")
+    ax.set_xlabel("")
     ax.grid(axis="y", color="#ececea", lw=0.6)
     ax.legend(frameon=False, fontsize=8.5, loc="upper left")
     fig.tight_layout()

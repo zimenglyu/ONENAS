@@ -400,11 +400,19 @@ BETA_SCALE_HI = 5.0
 BETA_MIN_OBS = 20          # usable rows needed in the window to trust a beta
 
 
-def _cost_frac(prc, tc, price_row, cost_bps):
-    """Cost fraction per unit traded notional, as a function of the stock."""
+def _cost_frac(prc, tc, price_row, cost_bps, cost_mult=1.0):
+    """Cost fraction per unit traded notional, as a function of the stock.
+
+    cost_mult scales whichever cost model is in force.  It exists for the
+    cost-sensitivity exhibit: multiplying the realistic per-name TC/|PRC|
+    keeps the cross-sectional shape of costs (wide-spread names stay
+    expensive) instead of flattening every stock to one rate the way
+    cost_bps does.  The default 1.0 is the identity, so every previously
+    published number is unaffected.
+    """
     if cost_bps is None:
-        return lambda k: tc[price_row][k] / abs(prc[price_row][k])
-    return lambda k: cost_bps / 1e4
+        return lambda k: cost_mult * tc[price_row][k] / abs(prc[price_row][k])
+    return lambda k: cost_mult * cost_bps / 1e4
 
 
 def rolling_betas(days, ret_by_row, window):
@@ -464,7 +472,7 @@ def short_leg_scale(beta, top, bot):
 
 
 def run_book(days, signal_idx, prc, tc, top_k, cost_bps=None,
-             book="algo1", hold_days=10, betas=None):
+             book="algo1", hold_days=10, betas=None, cost_mult=1.0):
     """Long-short book over the stitched stream.
 
     days: list of (panel_row, date, pred, real, naive); signal_idx selects
@@ -488,14 +496,16 @@ def run_book(days, signal_idx, prc, tc, top_k, cost_bps=None,
     Returns dict with daily series and stats.
     """
     if book == "algo1":
-        return _run_algo1(days, signal_idx, prc, tc, top_k, cost_bps, betas)
+        return _run_algo1(days, signal_idx, prc, tc, top_k, cost_bps, betas,
+                          cost_mult)
     if book == "sleeves":
         return _run_sleeves(days, signal_idx, prc, tc, top_k, cost_bps,
-                            hold_days, betas)
+                            hold_days, betas, cost_mult)
     raise ValueError(f"unknown book construction {book!r}")
 
 
-def _run_algo1(days, signal_idx, prc, tc, top_k, cost_bps, betas):
+def _run_algo1(days, signal_idx, prc, tc, top_k, cost_bps, betas,
+               cost_mult=1.0):
     """ICAIF Algorithm 1 long-short book with netted rebalancing.
 
     Positions are signed notionals that drift with realized returns.  The
@@ -522,7 +532,7 @@ def _run_algo1(days, signal_idx, prc, tc, top_k, cost_bps, betas):
         rebal = all(sig[k] > 0 for k in top) and all(sig[k] < 0 for k in bot)
         if rebal:
             price_row = max(row - 1, 0)  # trade at prior close
-            frac = _cost_frac(prc, tc, price_row, cost_bps)
+            frac = _cost_frac(prc, tc, price_row, cost_bps, cost_mult)
             s = short_leg_scale(betas[di] if betas is not None else None,
                                 top, bot)
             target = {k: per_name for k in top}
@@ -558,7 +568,8 @@ def _run_algo1(days, signal_idx, prc, tc, top_k, cost_bps, betas):
     }
 
 
-def _run_sleeves(days, signal_idx, prc, tc, top_k, cost_bps, hold_days, betas):
+def _run_sleeves(days, signal_idx, prc, tc, top_k, cost_bps, hold_days, betas,
+                 cost_mult=1.0):
     """Jegadeesh-Titman overlapping sleeves: scale-invariant, 1/H turnover.
 
     Each day: aggregate the live sleeves, retire the one formed H days ago,
@@ -599,7 +610,7 @@ def _run_sleeves(days, signal_idx, prc, tc, top_k, cost_bps, hold_days, betas):
                 after[k] = after.get(k, 0.0) + v
 
         price_row = max(row - 1, 0)  # trade at prior close
-        frac = _cost_frac(prc, tc, price_row, cost_bps)
+        frac = _cost_frac(prc, tc, price_row, cost_bps, cost_mult)
         cost = 0.0
         traded = 0.0
         for k in set(before) | set(after):
