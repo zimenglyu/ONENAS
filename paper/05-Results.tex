@@ -26,11 +26,13 @@ Buy \& hold$^{c}$                     & $+8.9$          & $+28.2$         & $-10
 \end{tabular}
 \par\smallskip
 {\footnotesize
-$^{a}$Reported at full replication: online LSTM 48 seeds (184 runs), GRU
-and periodic LSTM 40 seeds (160 runs each). Restricted to the ten seeds
-ONE-NAS was run at, these arms give $+33.6$, $+26.1$ and $+31.5$ --- within
-one standard error of the full-seed means, so the matched subset used for
-the paired tests in Table~\ref{tab:risk} is representative.
+$^{a}$Single networks, not ensembles: each run trains one model, and the
+cell is the mean over independent runs (online LSTM 48 seeds / 184 runs;
+GRU and periodic LSTM 40 seeds / 160 runs each), not the return of an
+ensemble of them. Restricted to the ten seeds ONE-NAS was run at, these
+arms give $+33.6$, $+26.1$ and $+31.5$ --- within one standard error of
+the full-seed means, so the matched subset used for the paired tests in
+Table~\ref{tab:risk} is representative.
 $^{b}$Deterministic; one run per panel ($n{=}4$), so its dispersion is
 across panels rather than seeds.
 $^{c}$Equal-weight, long-only, prior-study benchmark convention: raw
