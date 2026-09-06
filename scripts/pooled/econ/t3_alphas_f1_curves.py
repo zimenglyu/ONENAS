@@ -31,7 +31,11 @@ from rebook import load_preds        # noqa: E402
 _spec = importlib.util.spec_from_file_location("sw", "strategy_sweep.py")
 _sw = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_sw)
 
-SEEDS = set(range(42, 52))
+# Every seed present on disk.  ONE-NAS exists only at 42-51, so this widens
+# replication for the baselines (LSTM 48 seeds, GRU/periodic 40) and leaves
+# ONE-NAS unchanged; the pooled daily series each alpha is fitted to is then
+# each arm's best available estimate rather than a ten-seed subsample.
+SEEDS = set(range(42, 200))
 W0, W1 = "2020-01-01", "2024-12-31"
 
 ARMS = {
