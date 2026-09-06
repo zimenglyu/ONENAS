@@ -237,6 +237,46 @@ strongest tuning-span cell failed to transfer. Adopting a wider setting
 would require the protocol-symmetric 2016-2019 selection plus a dated
 PRIMARY.md amendment, neither of which this refresh provides.
 
+## DECLARED WIDTH SELECTION ON THE TUNING SPAN (2026-09-06, before launch)
+
+The eval-span refresh above found 50 and 60 islands ahead of the headline
+40, and correctly did not adopt them. This cell supplies the missing
+protocol-symmetric evidence: widths 40, 50 and 60 measured on the
+BASELINES' TUNING SPAN (2016-01-01..2019-12-31, Amendment 6 clock: NTW
+511/493/501/536, 201 generations), which is disjoint from the evaluation
+span and is where every other configuration decision in this campaign was
+made.
+
+Motivation, stated plainly so the provenance is on record: the eval-span
+paired comparison gives 50 vs 40 at dNet +4.8 (t=2.32) and dSharpe +0.07
+(t=2.40) over 40 (panel, seed) cells. That is a max-of-6 selection on the
+reported span and does not survive correction for the five comparisons
+made; it is a reason to run this test, not a result.
+
+- Arms: 40 (incumbent), 50, 60 islands. Frozen primary in every other
+  respect. Existing 40-island tuning fleet (seeds 42-46) is reused; seeds
+  47-51 are added so all three arms run at 10 seeds x 4 panels.
+- Objective, unchanged from the screen above: mean daily cross-sectional
+  rank IC over 2016-2019, pooled across panels and seeds. Economic
+  co-primary: the registered sleeves book (top-10, H=10, netted TC/PRC)
+  net % and Sharpe on the same span.
+- GATE, fixed now. Adoption of 50 or 60 requires, paired against 40 on
+  identical (panel, seed) cells (n=40): a positive dIC with t >= 2.4 AND a
+  positive economic delta with t >= 2.4. The 2.4 threshold is the
+  Bonferroni-corrected 5% level for the two candidate widths tested here;
+  the uncorrected 2.0 is deliberately not used, because selecting the
+  better of two candidates at 2.0 is how the eval-span look already
+  overstated its case.
+- A cell that clears one family but not the other is a FLAG, not a KEEP,
+  exactly as bp20 was treated.
+- If a width is KEPT, adopting it into the scored configuration still
+  requires a dated PRIMARY.md amendment written before it is scored on
+  2020-2024. If nothing clears the gate, 40 islands stands and the
+  eval-span advantage of 50/60 is reported as a negative result: an
+  apparent width gain that did not reproduce under protocol-symmetric
+  selection.
+- Reported in full regardless of outcome.
+
 ## Budget
 
 15 configurations x 2 panels x 3 seeds = 90 runs at the tune16 clock (201
