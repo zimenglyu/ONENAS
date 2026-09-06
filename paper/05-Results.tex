@@ -147,9 +147,16 @@ Net \% / Sharpe; $\Delta$ = ensemble $-$ single, paired $t$ over seeds.}
 \centering
 \includegraphics[width=\columnwidth]{islands_scaling.pdf}
 \caption{Performance vs.\ island count (2020--2024, registered sleeves
-book; 10 seeds per width). Left: pooled net return (mean $\pm$ SE).
-Right: Sharpe --- mean with $\pm$1 seed-SD band, and the worst seed;
-width narrows the seed distribution more than it moves the mean.}
+book; 10 seeds $\times$ 4 panels at every width). Left: pooled net return
+(mean $\pm$ SE). Right: Sharpe --- mean with $\pm$1 seed-SD band, and the
+worst seed. Return and Sharpe rise steeply to about 30 islands and then
+sit on a plateau ($+45$ to $+50$ net, Sharpe $0.88$--$0.96$) within which
+the widths are not separable at this replication; the worst seed keeps
+improving monotonically across the whole range ($0.51 \to 0.84$), so width
+continues to buy reliability after it stops buying mean return. The
+headline 40-island setting was fixed on the 2016--2019 tuning span before
+this curve was measured; 50 and 60 islands score nominally higher here but
+are eval-span measurements and are not adopted.}
 \label{fig:islands}
 \end{figure}
 

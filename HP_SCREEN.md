@@ -200,6 +200,43 @@ regular grid, 10/20/30/40/50/60 islands, for presentation. Terms, fixed now:
 - Reported in full regardless of outcome, including the case where a wider
   setting beats 40.
 
+OUTCOME (2026-09-06, all 160 new runs complete, zero failures; widths 20
+and 40 reused as declared, so the curve is 6 widths x 4 panels x 10 seeds
+= 240 runs). A WIDER SETTING DOES BEAT 40, which is the case this
+declaration was written for:
+
+  islands  net%    +-SE   Sharpe  seed SD  worst seed
+       10  +34.5    2.6     0.75    0.149      0.51
+       20  +41.4    1.8     0.84    0.106      0.66
+       30  +47.8    1.2     0.91    0.099      0.70
+       40  +45.4    1.9     0.88    0.080      0.75   <- headline
+       50  +50.2    1.6     0.96    0.109      0.81
+       60  +49.6    1.4     0.96    0.079      0.84
+
+Reading, stated conservatively: net and Sharpe climb steeply to ~30 and
+then plateau. Across 30/40/50/60 the net cells (47.8, 45.4, 50.2, 49.6)
+all sit within about two standard errors of one another, so the apparent
+dip at 40 and the apparent peak at 50 are both consistent with sampling
+noise at n=10 seeds; the honest claim is a plateau above 30, not an
+optimum at 50. This also corrects the previous 8/16/20/40 curve, which
+suggested saturation by 40 -- on a regular grid the plateau simply starts
+earlier and extends further than that sweep could show.
+
+The one monotonic trend is reliability: the worst seed improves at every
+step, 0.51 -> 0.66 -> 0.70 -> 0.75 -> 0.81 -> 0.84, a 65% improvement
+end to end, while the mean gains ~44%. Width keeps buying consistency
+after it stops buying return, which is the deployment argument for a wide
+setting.
+
+NO ADOPTION. 40 islands remains the headline: it was fixed on the
+2016-2019 tuning span (Amendment 6) before this curve existed, and every
+number above is an eval-span measurement, disclosed as such. Moving the
+headline to 50 or 60 on the strength of this look is precisely the
+selection inflation the bp20 episode demonstrated in-house -- there the
+strongest tuning-span cell failed to transfer. Adopting a wider setting
+would require the protocol-symmetric 2016-2019 selection plus a dated
+PRIMARY.md amendment, neither of which this refresh provides.
+
 ## Budget
 
 15 configurations x 2 panels x 3 seeds = 90 runs at the tune16 clock (201

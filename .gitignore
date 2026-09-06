@@ -9,4 +9,11 @@ run.sh
 __pycache__/*
 *.pyc
 visualization/plots/*
-test_output/*scripts/pooled/econ/onenas_c7e_elites/
+test_output/*
+# a missing newline had merged the line above with the one below, so
+# neither pattern matched anything
+scripts/pooled/econ/onenas_c7e_elites/
+# raw per-run prediction streams: hundreds of MB, regenerable on Anvil by
+# stitch_islands.sbatch and rsync.  Only the scored summaries
+# (results_econ/islands_curve10*.csv) are tracked.
+scripts/pooled/econ/islands_sweep/
