@@ -14,13 +14,42 @@
 #   Identical to the C7_ISL40 fleet behind the paper's headline tables.
 #
 # Panels: core7 (RET RET_CS_IN BA_SPREAD ILLIQUIDITY REV21_1 TURN_RATIO
-# VOL21 -> RET_CS target), eval clock 2020-2024, sleeves-book scoring via
-# score_ensemble.py --ensemble island_champions --combine rank_mean.
+# VOL21 -> RET_CS target), eval clock 2020-2024.
 #
 # Usage (one panel-set x seed per array task):
 #   sbatch --array=1-4 --export=ALL,SEED=42 best_run_40isl.sbatch
 #   for s in 42 43 44 45 46 47 48 49 50 51; do
 #     sbatch --array=1-4 --export=ALL,SEED=$s best_run_40isl.sbatch; done
+#
+# ---------------------------------------------------------------------
+# THIS RUN DOES NOT ENSEMBLE. It writes, per generation, BOTH
+#   generation_N_elites.csv       -- every island's elite population
+#   generation_N_global_best.csv  -- the single best genome overall
+# and the prediction rule is chosen afterwards, when scoring. The paper's
+# rule is the rank-mean ensemble of island champions; the published
+# ONE-NAS rule is the single global best. Both come from the same run.
+#
+# To build the paper's ensemble (NTW must match the value used above for
+# this panel set: set1 712, set2 695, set3 702, set4 738):
+#
+#   module load python/3.9.5
+#   python3 $ONENAS/scripts/pooled/score_ensemble.py \
+#     --run-dir  "$OUT" \
+#     --sidecar-dir "$DATA/${SET}_core7" \
+#     --step 5 --length 40 \
+#     --num-training-windows "$NTW" --validation-sets 5 \
+#     --param RET_CS \
+#     --score-from 2020-01-01 \
+#     --top-k 10 --book sleeves --hold-days 10 \
+#     --ensemble island_champions --combine rank_mean \
+#     --emit-json
+#
+# That writes ensemble_stitched_predictions.csv (date,stock,pred,real,
+# naive) next to the run, plus the book and diagnostics. Swap
+# --ensemble island_champions for --ensemble global_best to score the
+# single-genome rule instead; everything else stays identical, which is
+# how the two rules are compared within one run.
+# ---------------------------------------------------------------------
 
 module load gcc/11.2.0 openmpi/4.0.6 libtiff/4.1.0
 

@@ -1,0 +1,212 @@
+% 04-Dataset.tex -- data construction and experimental setup.
+%
+% AAAI COMPLIANCE: no added packages, and none of the commands aaai2027
+% forbids (no \setlength, \vspace, \vskip, \newpage, \tiny, ...). Column
+% padding is trimmed with @{} rather than by resetting \tabcolsep.
+%
+% SCOPE: experimental detail only -- what was run, on what data, scored
+% how. No findings, no interpretation; those live in the Results section.
+%
+% \text comes from amsmath, which this template does not load; the
+% fallback keeps the file self-contained if any \text survives an edit.
+% It is a no-op when amsmath is present.
+\providecommand{\text}[1]{\mathrm{#1}}
+
+\section{Data}
+
+\subsection{Universe and Source}
+
+All data are daily CRSP records for U.S.\ common equities. From the
+mid-- and upper-mid-capitalisation segment we form four disjoint panels,
+denoted $V1$--$V4$, of 51 tickers each (204 distinct names in total). Each
+panel spans 2004-08-16 to 2024-12-31, or 5{,}130 trading days, and is
+stored as one CSV per ticker plus a panel-level date index carrying the
+aligned raw price and transaction-cost columns for every name.
+
+Panel membership is fixed for the whole sample: a ticker is either in a
+panel for all 5{,}130 days or not in it at all. This removes index-
+reconstitution effects from the comparison, at the cost of conditioning
+the universe on names that survived to the end of the sample. All methods
+trade the identical universe, so the conditioning applies equally to every
+arm reported.
+
+\subsection{Features and Prediction Target}
+
+Each model sees seven per-stock features, all computed causally from
+information available at or before the formation day:
+
+\begin{itemize}\itemsep2pt
+\item \texttt{RET} --- the raw daily return.
+\item \texttt{RET\_CS\_IN} --- the cross-sectional rank-normal score of
+      \texttt{RET} on the same day, i.e.\ $\Phi^{-1}\!\big((\mathrm{rank}_t(i)-0.5)/N\big)$
+      over the $N$ names priced that day.
+\item \texttt{BA\_SPREAD} --- the quoted bid--ask spread.
+\item \texttt{ILLIQUIDITY} --- Amihud illiquidity: absolute return over
+      dollar volume, passed through a 21-day trailing mean and a log.
+\item \texttt{REV21\_1} --- short-horizon reversal, the compounded return
+      over the 20 rows preceding the formation day, excluding it.
+\item \texttt{TURN\_RATIO} --- turnover acceleration: the mean of
+      $\log(1+\mathrm{turnover})$ over the last 5 rows minus the same mean
+      over the last 63 rows.
+\item \texttt{VOL21} --- the sample standard deviation of \texttt{RET}
+      over the trailing 21 rows.
+\end{itemize}
+
+The last five of these are additionally mapped, per date, to their
+cross-sectional rank on $[-1,1]$, so that no feature carries a level that
+drifts across the two decades of the sample.
+
+The prediction target is \texttt{RET\_CS}: the next day's return, rank-
+normalised across the cross-section of that day by the same $\Phi^{-1}$
+transform. Predicting a cross-sectional rank rather than a raw return
+makes the target stationary by construction and matches how the
+predictions are consumed --- every trading rule in this paper reads only
+the ordering of the predicted cross-section.
+
+Realised returns used for scoring are CRSP \texttt{RET}, which is adjusted
+for splits and dividends. Prices and per-name transaction costs enter only
+through the cost model below.
+
+\section{Experimental Setup}
+
+\subsection{Online Evaluation Protocol}
+
+Every method is evaluated prequentially: on each scored day the model
+predicts the next day's cross-section, the realised outcome is then
+revealed, and the model updates. No model ever sees a label before
+predicting it, and no model is refit on the scored span with hindsight.
+
+ONE-NAS advances on a weekly clock. One generation corresponds to a
+\texttt{window\_step} of 5 trading days; each genome is trained on
+sequences of length $L=40$ and validated on the 5 most recent windows.
+The number of training windows is set per panel so that the clock lands on
+the intended calendar span --- 712, 695, 702 and 738 windows for
+$V1$--$V4$ on the evaluation span, and 511, 493, 501 and 536 on the
+tuning span.
+
+The sample is divided into three disjoint spans, used for three distinct
+purposes:
+
+\begin{itemize}\itemsep2pt
+\item \textbf{Burn-in}, through 2019-12-31. The population evolves online
+      but nothing is scored. A further 50 warm-up generations precede any
+      recorded prediction, so the scored population is never a cold start.
+\item \textbf{Tuning}, 2016-01-01 to 2019-12-31. Every configuration
+      decision --- hyperparameter screen, island count --- is made here.
+\item \textbf{Evaluation}, 2020-01-01 to 2024-12-31. Scored once per
+      registered configuration.
+\end{itemize}
+
+\subsection{Search Configuration and Prediction Rule}
+
+The ONE-NAS settings are listed in Table~\ref{tab:hps} and were selected
+on the tuning span. Node types available to the search are simple,
+UGRNN, MGU, GRU, $\Delta$-RNN and LSTM recurrent cells.
+
+A single run yields, at every generation, both the elite population of
+each island and the single best genome overall, so the prediction rule is
+a scoring-time choice rather than a property of the run. Two rules are
+reported. The \emph{single champion} rule takes the global-best genome, as
+in prior ONE-NAS work. The \emph{ensemble} rule takes one champion per
+island --- the lowest-validation-error elite of each --- converts each
+member's predicted cross-section to ranks, and averages the ranks. Rank
+averaging is used rather than averaging predictions because the members
+are separately trained networks whose output scales are not comparable.
+
+\subsection{Baselines}
+
+Four online baselines trade the same books on the same panels under the
+same costs. All are single networks; the reported cell is the mean over
+independent runs, not the return of an ensemble of those runs.
+
+\begin{itemize}\itemsep2pt
+\item \textbf{Online LSTM} --- one LSTM, 8 hidden units, sequence length
+      10, Adam at $10^{-3}$, one gradient step per trading day with a
+      1000-day replay buffer.
+\item \textbf{Online GRU} --- as above with a GRU cell and sequence
+      length 5.
+\item \textbf{Periodic LSTM} --- the same LSTM architecture refit from
+      scratch each month for up to 4000 steps, rather than updated daily.
+\item \textbf{Online AR} --- a first-order autoregression fitted by online
+      gradient descent at $\eta=10^{-4}$. Deterministic, so it contributes
+      one run per panel rather than one per seed.
+\end{itemize}
+
+All baselines predict the same cross-sectionally demeaned target as
+ONE-NAS.
+
+\subsection{Trading Books}
+
+Predictions are turned into positions by a registered primary
+construction, with two further constructions reported as sensitivities.
+
+The \textbf{sleeves} book is the registered primary: Jegadeesh--Titman
+overlapping portfolios. Each day a new sleeve goes long the top
+$k=10$ names and short the bottom 10 by predicted rank, at
+$(\$100/H)/k$ per name per side with holding period $H=10$ days; the
+sleeve formed $H$ days earlier is retired. Ten sleeves are therefore live
+at once, and costs are charged on the change in \emph{aggregate} per-name
+notional, so a name held by several sleeves is netted rather than traded
+repeatedly. Because only the ordering of each day's predictions is read,
+every metric is invariant to any strictly monotone transform of a model's
+outputs.
+
+The \textbf{banded} book enters a name at predicted rank $\le 10$ and
+holds it until its rank passes 35, following the buy/hold-spread
+construction used to reduce turnover in the transaction-cost literature.
+The \textbf{Algorithm 1} book is the conditional long--short rule of the
+prior study, which rebalances only when all ten top predictions are
+positive and all ten bottom predictions negative.
+
+Books are funded with \$100 of capital and \$200 of gross notional when
+fully invested. Transaction costs are charged per name from the CRSP
+cost field scaled by the traded notional at the prior close, so
+wide-spread names are genuinely more expensive to trade than liquid ones;
+no flat basis-point assumption is used. All reported returns are net of
+these costs.
+
+\subsection{Metrics}
+
+Two families are reported. \emph{Prediction quality}: the daily
+cross-sectional Spearman rank correlation between predicted and realised
+returns, averaged over scored days (rank IC). \emph{Economics}: net return
+as cumulative daily profit and loss over initial capital, annualised
+Sharpe ratio, maximum drawdown, and turnover as mean daily traded notional
+divided by gross book size.
+
+Factor-adjusted returns regress each arm's pooled daily book return on the
+Fama--French three factors plus momentum, with Newey--West standard errors
+at lag 10.
+
+\subsection{Replication and Statistical Comparison}
+
+The unit of replication is one (panel, seed) cell. Unless stated
+otherwise, ONE-NAS arms comprise 10 seeds $\times$ 4 panels $=40$ cells.
+The baselines were run at higher replication --- 48 seeds for online LSTM,
+40 for online GRU and periodic LSTM --- and their own means are reported
+at that full replication.
+
+Comparisons between arms are paired within (panel, seed) cells, so that
+panel and seed effects cancel, and the reported $t$ is a paired $t$ over
+those cells. Where two arms do not share a seed set, the pairing is
+restricted to the cells they have in common and $n$ is stated.
+
+\subsection{Compute Environment}
+
+All searches ran on ACCESS Anvil. Each run occupied one node of the
+\texttt{wholenode} partition with 128 MPI ranks, one acting as the master
+that maintains the island populations and distributes genomes, and the
+remaining 127 as workers that train and evaluate them. The island count
+is a search parameter and is independent of the rank count, so the worker
+pool is identical across every configuration reported. Baselines are
+single-process and were run on the same hardware.
+
+\subsection{Pre-Registration}
+
+The scored configuration, evaluation span, trading book and metrics were
+committed to the repository before the evaluation span was scored, and
+each subsequent look at the data was declared in advance with its
+decision rule. Configuration changes require a dated amendment written
+before the changed configuration is scored. The registered protocol,
+the hyperparameter screen with its per-cell outcomes, and every declared
+exploratory look are included in the code release.

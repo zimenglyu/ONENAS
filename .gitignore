@@ -18,6 +18,9 @@ scripts/pooled/econ/onenas_c7e_elites/
 # (results_econ/islands_curve10*.csv) are tracked.
 scripts/pooled/econ/islands_sweep/
 
+# raw tuning-span stitched streams: regenerable via stitch_tune.sbatch
+scripts/pooled/econ/tune_sweep/
+
 # local copy of the core7 panels (data, never committed)
 panels_core7/
 panels_core7.zip
