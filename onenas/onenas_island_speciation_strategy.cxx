@@ -592,6 +592,14 @@ RNN_Genome* OneNasIslandSpeciationStrategy::get_global_best_genome(){
     return global_best_genome;
 }
 
+vector<RNN_Genome*> OneNasIslandSpeciationStrategy::get_island_best_genomes() {
+    vector<RNN_Genome*> bests;
+    for (int32_t i = 0; i < number_of_islands; i++) {
+        bests.push_back(islands[i]->get_best_genome());
+    }
+    return bests;
+}
+
 RNN_Genome* OneNasIslandSpeciationStrategy::select_global_best_genome() {
     RNN_Genome* best_genome = NULL;
     double best_fitness = EXAMM_MAX_DOUBLE;

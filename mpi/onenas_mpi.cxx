@@ -27,6 +27,8 @@ using std::vector;
 #include "onenas/onenas.hxx"
 #include "onenas/onenas_island_speciation_strategy.hxx"
 #include "mpi.h"
+#include "common/pi_protocol.hxx"
+#include "mpi/pi_sender.hxx"
 #include "rnn/generate_nn.hxx"
 #include "time_series/time_series.hxx"
 #include "time_series/online_series.hxx"
@@ -330,6 +332,67 @@ void populate_test_and_validation_data(
         }
     }
     Log::info("Current testing episode ID(s): %d test episodes, first ID %d\n", (int32_t)test_indices.size(), test_indices.empty() ? -1 : test_indices[0]);
+}
+
+// optional: only created when --send_to_pi is given. --pi_host/--pi_port
+// override these defaults from the command line. Once per generation, after
+// finalization, the generation's genomes are streamed to the pi together with
+// the episode ids of that generation's test window (see common/pi_protocol.hxx):
+//   --pi_mode global_best (default): the generation's global best genome
+//   --pi_mode island_best:           the best genome of every island (the pi
+//                                    scores each one and their ensemble)
+const string DEFAULT_PI_HOST = "192.168.0.70";
+const int32_t DEFAULT_PI_PORT = 5555;
+PiSender* pi_sender = NULL;
+int32_t pi_mode = PI_MODE_GLOBAL_BEST;
+int32_t pi_num_episodes = 0;
+
+void send_generation_to_pi(
+    int32_t current_generation, OneNasIslandSpeciationStrategy* strategy, const vector<int32_t>& test_indices
+) {
+    PiGenerationMessage msg;
+    msg.generation = current_generation;
+    msg.mode = pi_mode;
+    msg.num_episodes_total = pi_num_episodes;
+    msg.test_episode_ids = test_indices;
+
+    vector<RNN_Genome*> genomes;
+    vector<int32_t> islands;
+    if (pi_mode == PI_MODE_ISLAND_BEST && strategy != NULL) {
+        vector<RNN_Genome*> bests = strategy->get_island_best_genomes();
+        for (int32_t i = 0; i < (int32_t) bests.size(); i++) {
+            if (bests[i] != NULL) {
+                genomes.push_back(bests[i]);
+                islands.push_back(i);
+            }
+        }
+    } else {
+        RNN_Genome* best = onenas->get_best_genome();
+        if (best != NULL) {
+            genomes.push_back(best);
+            islands.push_back(best->get_group_id());
+        }
+    }
+    if (genomes.empty()) {
+        Log::warning("generation %d: no genome to send to the pi\n", current_generation);
+        return;
+    }
+
+    for (int32_t g = 0; g < (int32_t) genomes.size(); g++) {
+        char* byte_array;
+        int32_t length;
+        genomes[g]->write_to_array(&byte_array, length);
+        msg.add_genome(islands[g], byte_array, length);
+        free(byte_array);
+    }
+
+    vector<char> bytes = msg.serialize();
+    pi_sender->enqueue(bytes.data(), (int32_t) bytes.size());
+    Log::info(
+        "queued generation %d for the pi: %d genome(s), mode %s, %d test episode(s) starting at %d\n",
+        current_generation, (int32_t) genomes.size(), pi_mode_name(pi_mode).c_str(), (int32_t) test_indices.size(),
+        test_indices.empty() ? -1 : test_indices[0]
+    );
 }
 
 void master(int32_t max_rank, OnlineSeries* online_series, int32_t current_generation) {
@@ -653,6 +716,26 @@ int main(int argc, char** argv) {
         
         // Initialize CSV files for logging (only on master process)
         initialize_csv_files();
+
+        if (argument_exists(arguments, "--send_to_pi")) {
+            string pi_host = DEFAULT_PI_HOST;
+            int32_t pi_port = DEFAULT_PI_PORT;
+            string pi_mode_string = "global_best";
+            get_argument(arguments, "--pi_host", false, pi_host);
+            get_argument(arguments, "--pi_port", false, pi_port);
+            get_argument(arguments, "--pi_mode", false, pi_mode_string);
+            if (pi_mode_string.compare("global_best") == 0) {
+                pi_mode = PI_MODE_GLOBAL_BEST;
+            } else if (pi_mode_string.compare("island_best") == 0) {
+                pi_mode = PI_MODE_ISLAND_BEST;
+            } else {
+                Log::fatal("--pi_mode must be global_best or island_best, got '%s'\n", pi_mode_string.c_str());
+                exit(1);
+            }
+            pi_num_episodes = num_sets;
+            pi_sender = new PiSender(pi_host, pi_port);
+            Log::info("streaming each generation's %s genome(s) to the pi at %s:%d\n", pi_mode_string.c_str(), pi_host.c_str(), pi_port);
+        }
     }
 
     for (int32_t  current_generation = 0; current_generation < total_generation; current_generation ++) {
@@ -741,6 +824,10 @@ int main(int argc, char** argv) {
             Log::info("MPI Generation %d priority update complete\n", current_generation);
             
             onenas->update_log();
+
+            if (pi_sender != NULL) {
+                send_generation_to_pi(current_generation, onenas_strategy, test_indices);
+            }
             
             // Track memory usage at end of generation
             Log::log_memory_usage("Generation " + std::to_string(current_generation) + " end");
@@ -756,6 +843,10 @@ int main(int argc, char** argv) {
         
         // Clean up memory on master process
         Log::log_memory_usage("Before cleanup");
+        if (pi_sender != NULL) {
+            delete pi_sender;  // waits for the queue to drain
+            pi_sender = NULL;
+        }
         delete onenas;
         delete online_series;
         delete weight_update_method;

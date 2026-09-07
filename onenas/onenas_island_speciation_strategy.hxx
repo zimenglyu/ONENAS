@@ -233,6 +233,12 @@ class OneNasIslandSpeciationStrategy : public SpeciationStrategy {
         RNN_Genome* get_global_best_genome();
 
         /**
+         * The best (elite rank 0) genome of every island, in island order; NULL for an
+         * island with no elites. Pointers are owned by the islands: do not delete them.
+         */
+        vector<RNN_Genome*> get_island_best_genomes();
+
+        /**
          * Selects the global best genome from all islands based on best_validation_mse
          * \return the genome with the lowest best_validation_mse across all islands
          */

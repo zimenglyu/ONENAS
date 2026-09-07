@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J onenas_best40
+#SBATCH -J onenas_best40_pi_islands
 #SBATCH -A cis251123
 #SBATCH -p wholenode
 #SBATCH -N 1
@@ -8,7 +8,15 @@
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 #
-# THE BEST / FINAL CONFIGURATION — fully pinned, no knobs.
+# THE BEST / FINAL CONFIGURATION, streamed to a Raspberry Pi (island_best).
+# Same run as best_run_40isl.sbatch; additionally, after every generation,
+# the best genome of EVERY island (the pi scores each and their ensemble)
+# is sent to a pi_genome_server, which evaluates it on that generation's test
+# window (see scripts/pi/README.md). The pi must be running
+#   scripts/pi/pi_server_40isl.sh <set>       (same SET as this job's array task)
+# and holding open a reverse tunnel to LOGIN_NODE (below) before this is submitted.
+# Submit ONE array task per job: the pi evaluates one panel-set at a time.
+#
 # = the frozen registered primary (PRIMARY.md, ac58a56) at the headline
 #   width of 40 islands (Amendment 6 protocol-symmetric selection).
 #   Identical to the C7_ISL40 fleet behind the paper's headline tables.
@@ -17,10 +25,8 @@
 # VOL21 -> RET_CS target), eval clock 2020-2024, sleeves-book scoring via
 # score_ensemble.py --ensemble island_champions --combine rank_mean.
 #
-# Usage (one panel-set x seed per array task):
-#   sbatch --array=1-4 --export=ALL,SEED=42 best_run_40isl.sbatch
-#   for s in 42 43 44 45 46 47 48 49 50 51; do
-#     sbatch --array=1-4 --export=ALL,SEED=$s best_run_40isl.sbatch; done
+# Usage (one panel-set x seed per job; the pi serves that set):
+#   sbatch --array=1 --export=ALL,SEED=42 best_run_40isl_pi_islands.sbatch
 
 module load gcc/11.2.0 openmpi/4.0.6 libtiff/4.1.0
 
@@ -28,6 +34,17 @@ ONENAS="$HOME/ONENAS"
 DATA="/anvil/projects/x-cis251123/shared/panels_core7"
 SEED="${SEED:-42}"
 SET="set${SLURM_ARRAY_TASK_ID:-1}"
+LOGIN_NODE="login03"   # the login node the pi's reverse tunnel is attached to
+PI_PORT=5555
+
+# forward this compute node's $PI_PORT to the login node, where the pi's
+# reverse tunnel is listening (see scripts/pi/README.md for the keys)
+ssh -N -o ExitOnForwardFailure=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -L $PI_PORT:localhost:$PI_PORT $LOGIN_NODE &
+TUNNEL_PID=$!
+sleep 3
+if ! kill -0 $TUNNEL_PID 2>/dev/null; then
+    echo "could not open tunnel to $LOGIN_NODE, genomes will not reach the pi"
+fi
 
 # eval-span clock (scored span 2020-01-01..2024-12-31), L=40, step 5, V=5
 case "$SET" in
@@ -38,11 +55,11 @@ case "$SET" in
   *) echo "unknown set $SET"; exit 1 ;;
 esac
 
-OUT="/anvil/scratch/x-jchang5/results_v2/best_40isl/${SET}_seed${SEED}"
+OUT="/anvil/scratch/x-jchang5/results_v2/best_40isl_pi_islands/${SET}_seed${SEED}"
 mkdir -p "$OUT"
 FILES=$(ls "$DATA/${SET}_core7/"*.csv | grep -v panel_)
 
-echo "BEST RUN (frozen primary @ 40 islands) $SET seed=$SEED -> $OUT"
+echo "BEST RUN (frozen primary @ 40 islands, island_best -> pi) $SET seed=$SEED -> $OUT"
 time srun --mpi=pmi2 "$ONENAS/build/mpi/onenas_mpi" \
   --training_filenames $FILES \
   --pooled_panel --time_offset 1 \
@@ -61,5 +78,8 @@ time srun --mpi=pmi2 "$ONENAS/build/mpi/onenas_mpi" \
   --possible_node_types simple UGRNN MGU GRU delta LSTM \
   --normalize none --compare_with_naive --control_size_method none \
   --write_elite_predictions \
+  --send_to_pi --pi_mode island_best --pi_host 127.0.0.1 --pi_port $PI_PORT \
   --std_message_level ERROR --file_message_level ERROR \
   --output_directory "$OUT"
+
+kill $TUNNEL_PID 2>/dev/null
