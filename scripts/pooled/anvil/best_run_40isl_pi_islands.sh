@@ -4,7 +4,7 @@
 #SBATCH -p wholenode
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=128
-#SBATCH -t 24:00:00
+#SBATCH -t 19:00:00
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 #
