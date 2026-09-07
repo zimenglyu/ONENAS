@@ -21,3 +21,6 @@ scripts/pooled/econ/islands_sweep/
 # local copy of the core7 panels (data, never committed)
 panels_core7/
 panels_core7.zip
+
+# Pi results pulled off the device (data, never committed)
+pi_results/

@@ -7,6 +7,7 @@
 //   int32_t magic (PI_MAGIC), int32_t version (PI_VERSION)
 //   int32_t generation
 //   int32_t mode              (PI_MODE_GLOBAL_BEST or PI_MODE_ISLAND_BEST)
+//   int32_t seed              (--online_series_seed; identifies the run on the pi)
 //   int32_t num_episodes_total (episode count after slicing, for the pi to check its data matches)
 //   int32_t num_test, int32_t test_episode_ids[num_test]  (the generation's test window)
 //   int32_t num_genomes, then per genome: int32_t island, int32_t length, char bytes[length]
@@ -20,7 +21,7 @@
 #include <vector>
 
 const int32_t PI_MAGIC = 0x4F4E5049;  // "ONPI"
-const int32_t PI_VERSION = 1;
+const int32_t PI_VERSION = 2;
 const int32_t PI_MODE_GLOBAL_BEST = 0;
 const int32_t PI_MODE_ISLAND_BEST = 1;
 
@@ -31,6 +32,7 @@ inline std::string pi_mode_name(int32_t mode) {
 struct PiGenerationMessage {
     int32_t generation = -1;
     int32_t mode = PI_MODE_GLOBAL_BEST;
+    int32_t seed = -1;
     int32_t num_episodes_total = 0;
     std::vector<int32_t> test_episode_ids;
     std::vector<int32_t> islands;                  // one per genome
@@ -51,6 +53,7 @@ struct PiGenerationMessage {
         put(PI_VERSION);
         put(generation);
         put(mode);
+        put(seed);
         put(num_episodes_total);
         put((int32_t) test_episode_ids.size());
         for (int32_t id : test_episode_ids) put(id);
@@ -75,7 +78,7 @@ struct PiGenerationMessage {
         int32_t magic, version, n;
         if (!get(magic) || magic != PI_MAGIC) { error = "bad magic"; return false; }
         if (!get(version) || version != PI_VERSION) { error = "unsupported version"; return false; }
-        if (!get(generation) || !get(mode) || !get(num_episodes_total) || !get(n) || n < 0) { error = "bad header"; return false; }
+        if (!get(generation) || !get(mode) || !get(seed) || !get(num_episodes_total) || !get(n) || n < 0) { error = "bad header"; return false; }
         test_episode_ids.assign(n, 0);
         for (int32_t i = 0; i < n; i++) if (!get(test_episode_ids[i])) { error = "truncated test ids"; return false; }
         if (!get(n) || n < 0) { error = "bad genome count"; return false; }

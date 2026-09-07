@@ -21,6 +21,12 @@
 //                predicted, like the master's elites file restricted to rank 0)
 //                and generation_<g>_ensemble.csv (master's global-best format).
 //
+// Each run (one --pi_mode and one --online_series_seed) gets its own directory,
+// <output_directory>/<mode>_seed<seed>/, so back-to-back runs never overwrite one
+// another and the pi does not have to be restarted between them. The idle
+// baseline is re-metered at the start of every run, while the pi is genuinely
+// idle waiting on the connection.
+//
 // Every genome gets a row in pi_evaluations.csv with MSE/MAE on the window,
 // the naive (previous value) MSE, inference time, throughput and, with
 // --ina219, INA219 power/energy during inference. One inference over the
@@ -172,7 +178,7 @@ int main(int argc, char** argv) {
     INA219 ina219;
     INA219Sampler ina219_sampler;
     bool ina219_active = false;
-    double idle_power_mw = 0.0;
+    double idle_power_mw = 0.0;   // re-metered at the start of every run
     if (use_ina219) {
         if (ina219.open_device(ina219_device.c_str()) && ina219.configure()) {
             INA219Reading first;
@@ -188,36 +194,17 @@ int main(int argc, char** argv) {
                 if (fabs(first.current_ma) < 1.0) {
                     Log::warning("INA219 current is ~0 mA: the shunt is not in the supply path, check the wiring\n");
                 }
-                // idle baseline: the board's draw while nothing is being evaluated
-                ina219_sampler.start(&ina219);
-                int64_t idle_start = INA219Sampler::now_us();
-                std::this_thread::sleep_for(std::chrono::milliseconds(idle_measure_ms));
-                int64_t idle_end = INA219Sampler::now_us();
-                ina219_sampler.stop();
-                INA219Stats idle = ina219_sampler.get_stats(idle_start, idle_end);
-                idle_power_mw = idle.power_mw_avg;
-                Log::info("INA219 idle baseline over %d ms (%d readings, %.1f readings/s): %.3f V, %.1f mA, %.1f mW\n",
-                    idle_measure_ms, idle.sample_count, idle.sample_count * 1000.0 / idle_measure_ms, idle.bus_voltage_v_avg, idle.current_ma_avg, idle_power_mw);
-                if (idle.sample_count < 10) {
-                    Log::warning("INA219 delivered only %d readings in %d ms: energy numbers will be coarse\n", idle.sample_count, idle_measure_ms);
-                }
             }
         } else {
             Log::warning("INA219 requested but could not open %s, continuing without power monitoring\n", ina219_device.c_str());
         }
     }
 
-    string results_path = output_directory + "/pi_evaluations.csv";
-    bool new_results = access(results_path.c_str(), F_OK) != 0;
-    ofstream results(results_path, std::ios::app);
-    if (new_results) {
-        results << "generation,mode,island,genome_id,parameters,series,rows,mse,mae,naive_mse,build_ms,inference_ms,repeats,measured_ms,per_point_us,throughput_per_s,"
-                << "ina219_samples,bus_voltage_v_avg,current_ma_avg,power_mw_avg,idle_power_mw,energy_mj,energy_net_mj,energy_per_point_mj" << std::endl;
-    }
-    if (save_genomes) {
-        mkdir((output_directory + "/genomes").c_str(), 0755);
-    }
-    Log::info("results: %s (appending), per-generation prediction files%s in %s\n", results_path.c_str(), save_genomes ? " and genomes/" : "", output_directory.c_str());
+    // per-run output state; a run is one (mode, seed) pair
+    string run_key, results_directory;
+    ofstream results;
+    Log::info("results will go to %s/<mode>_seed<seed>/ (pi_evaluations.csv, per-generation prediction files%s)\n",
+        output_directory.c_str(), save_genomes ? ", genomes/" : "");
 
     int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     int one = 1;
@@ -252,7 +239,47 @@ int main(int argc, char** argv) {
                 continue;
             }
             int32_t g = msg.generation;
-            Log::info("generation %d: %d genome(s), mode %s, %d test episode(s)\n", g, (int32_t) msg.genome_bytes.size(), pi_mode_name(msg.mode).c_str(), (int32_t) msg.test_episode_ids.size());
+            Log::info("generation %d: %d genome(s), mode %s, seed %d, %d test episode(s)\n", g, (int32_t) msg.genome_bytes.size(), pi_mode_name(msg.mode).c_str(), msg.seed, (int32_t) msg.test_episode_ids.size());
+
+            // a new (mode, seed) is a new run: its own directory, its own idle baseline
+            string this_key = pi_mode_name(msg.mode) + "_seed" + std::to_string(msg.seed);
+            if (run_key != this_key) {
+                run_key = this_key;
+                results_directory = output_directory + "/" + run_key;
+                mkdir(results_directory.c_str(), 0755);
+                if (save_genomes) {
+                    mkdir((results_directory + "/genomes").c_str(), 0755);
+                }
+                string results_path = results_directory + "/pi_evaluations.csv";
+                bool new_results = access(results_path.c_str(), F_OK) != 0;
+                if (results.is_open()) {
+                    results.close();
+                }
+                results.open(results_path, std::ios::app);
+                if (new_results) {
+                    results << "generation,mode,seed,island,genome_id,parameters,series,rows,mse,mae,naive_mse,build_ms,inference_ms,repeats,measured_ms,per_point_us,throughput_per_s,"
+                            << "ina219_samples,bus_voltage_v_avg,current_ma_avg,power_mw_avg,idle_power_mw,energy_mj,energy_net_mj,energy_per_point_mj" << std::endl;
+                }
+                Log::info("=== run %s -> %s ===\n", run_key.c_str(), results_directory.c_str());
+
+                // the pi has been idle waiting for this run's first message, so meter the
+                // baseline now rather than reusing one taken at startup
+                if (ina219_active) {
+                    ina219_sampler.start(&ina219);
+                    int64_t idle_start = INA219Sampler::now_us();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(idle_measure_ms));
+                    int64_t idle_end = INA219Sampler::now_us();
+                    ina219_sampler.stop();
+                    INA219Stats idle = ina219_sampler.get_stats(idle_start, idle_end);
+                    idle_power_mw = idle.power_mw_avg;
+                    Log::info("idle baseline for %s over %d ms (%d readings, %.1f readings/s): %.3f V, %.1f mA, %.1f mW\n",
+                        run_key.c_str(), idle_measure_ms, idle.sample_count, idle.sample_count * 1000.0 / idle_measure_ms,
+                        idle.bus_voltage_v_avg, idle.current_ma_avg, idle_power_mw);
+                    if (idle.sample_count < 10) {
+                        Log::warning("INA219 delivered only %d readings in %d ms: energy numbers will be coarse\n", idle.sample_count, idle_measure_ms);
+                    }
+                }
+            }
 
             if (msg.num_episodes_total != (int32_t) inputs.size()) {
                 Log::error("generation %d: master has %d episodes but the pi sliced %d: the pi's data flags differ from the master's, skipping\n", g, msg.num_episodes_total, (int32_t) inputs.size());
@@ -288,7 +315,7 @@ int main(int argc, char** argv) {
                 }
 
                 if (save_genomes) {
-                    genome->write_to_file(output_directory + "/genomes/generation_" + std::to_string(g) + "_island_" + std::to_string(r.island) + "_genome_" + std::to_string(r.genome_id) + ".bin");
+                    genome->write_to_file(results_directory + "/genomes/generation_" + std::to_string(g) + "_island_" + std::to_string(r.island) + "_genome_" + std::to_string(r.genome_id) + ".bin");
                 }
 
                 // build: deserialized genome -> runnable network with its weights
@@ -385,7 +412,7 @@ int main(int argc, char** argv) {
                         Log::warning("  INA219: no readings during the %.1f ms window\n", r.measured_ms);
                     }
                 }
-                results << g << "," << pi_mode_name(msg.mode) << "," << r.island << "," << r.genome_id << "," << r.parameters << ","
+                results << g << "," << pi_mode_name(msg.mode) << "," << msg.seed << "," << r.island << "," << r.genome_id << "," << r.parameters << ","
                         << test_inputs.size() << "," << r.rows << "," << r.mse << "," << r.mae << "," << r.naive_mse << ","
                         << r.build_ms << "," << r.inference_ms << "," << r.repeats << "," << r.measured_ms << "," << per_point_us << "," << throughput << ","
                         << r.power.sample_count << "," << r.power.bus_voltage_v_avg << "," << r.power.current_ma_avg << ","
@@ -394,7 +421,7 @@ int main(int argc, char** argv) {
             }
 
             if (write_predictions && !gen_results.empty()) {
-                string base = output_directory + "/generation_" + std::to_string(g);
+                string base = results_directory + "/generation_" + std::to_string(g);
                 if (msg.mode == PI_MODE_ISLAND_BEST) {
                     Log::info("generation %d: writing %s_island_best.csv and %s_ensemble.csv\n", g, base.c_str(), base.c_str());
                     ofstream out(base + "_island_best.csv");

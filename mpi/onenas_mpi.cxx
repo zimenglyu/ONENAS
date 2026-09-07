@@ -346,6 +346,7 @@ const int32_t DEFAULT_PI_PORT = 5555;
 PiSender* pi_sender = NULL;
 int32_t pi_mode = PI_MODE_GLOBAL_BEST;
 int32_t pi_num_episodes = 0;
+int32_t pi_seed = -1;
 
 void send_generation_to_pi(
     int32_t current_generation, OneNasIslandSpeciationStrategy* strategy, const vector<int32_t>& test_indices
@@ -353,6 +354,7 @@ void send_generation_to_pi(
     PiGenerationMessage msg;
     msg.generation = current_generation;
     msg.mode = pi_mode;
+    msg.seed = pi_seed;
     msg.num_episodes_total = pi_num_episodes;
     msg.test_episode_ids = test_indices;
 
@@ -389,8 +391,8 @@ void send_generation_to_pi(
     vector<char> bytes = msg.serialize();
     pi_sender->enqueue(bytes.data(), (int32_t) bytes.size());
     Log::info(
-        "queued generation %d for the pi: %d genome(s), mode %s, %d test episode(s) starting at %d\n",
-        current_generation, (int32_t) genomes.size(), pi_mode_name(pi_mode).c_str(), (int32_t) test_indices.size(),
+        "queued generation %d for the pi: %d genome(s), mode %s, seed %d, %d test episode(s) starting at %d\n",
+        current_generation, (int32_t) genomes.size(), pi_mode_name(pi_mode).c_str(), pi_seed, (int32_t) test_indices.size(),
         test_indices.empty() ? -1 : test_indices[0]
     );
 }
@@ -733,8 +735,9 @@ int main(int argc, char** argv) {
                 exit(1);
             }
             pi_num_episodes = num_sets;
+            get_argument(arguments, "--online_series_seed", false, pi_seed);
             pi_sender = new PiSender(pi_host, pi_port);
-            Log::info("streaming each generation's %s genome(s) to the pi at %s:%d\n", pi_mode_string.c_str(), pi_host.c_str(), pi_port);
+            Log::info("streaming each generation's %s genome(s) to the pi at %s:%d (seed %d)\n", pi_mode_string.c_str(), pi_host.c_str(), pi_port, pi_seed);
         }
     }
 

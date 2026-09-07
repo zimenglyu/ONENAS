@@ -4,7 +4,7 @@
 #SBATCH -p wholenode
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=128
-#SBATCH -t 02:00:00
+#SBATCH -t 24:00:00
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 #
@@ -27,7 +27,9 @@
 #
 # Run from the login-node shell opened by scripts/pi/pi_tunnel.sh:
 #   sbatch scripts/pooled/anvil/best_run_40isl_pi_global.sh
-# Settings (SET, SEED, LOGIN_NODE) are the variables below.
+# Settings (SET, SEEDS, LOGIN_NODE) are the variables below. The seeds run one
+# after another inside this one job, because the pi serves one run at a time --
+# do NOT submit several of these at once, they would all reach for the same pi.
 
 module load gcc/11.2.0 openmpi/4.0.6 libtiff/4.1.0
 
@@ -36,7 +38,7 @@ DATA="/anvil/projects/x-cis251123/shared/panels_core7"
 
 # ---- settings ----
 SET=1                  # panel-set 1..4, must match pi_server.sh on the pi
-SEED=42
+SEEDS="42 43 44 45 46 47 48 49 50 51"   # run sequentially, one result set each
 LOGIN_NODE="login03"   # the login node pi_tunnel.sh is attached to
 PI_PORT=5555
 # ------------------
@@ -60,31 +62,37 @@ case "$SET" in
   *) echo "unknown set $SET"; exit 1 ;;
 esac
 
-OUT="/anvil/scratch/x-zlyu2/results_v2/best_40isl_pi_global/${SET}_seed${SEED}"
-mkdir -p "$OUT"
 FILES=$(ls "$DATA/${SET}_core7/"*.csv | grep -v panel_)
 
-echo "BEST RUN (frozen primary @ 40 islands, global_best -> pi) $SET seed=$SEED -> $OUT"
-time srun --mpi=pmi2 "$ONENAS/build/mpi/onenas_mpi" \
-  --training_filenames $FILES \
-  --pooled_panel --time_offset 1 \
-  --input_parameter_names RET RET_CS_IN BA_SPREAD ILLIQUIDITY REV21_1 TURN_RATIO VOL21 \
-  --output_parameter_names RET_CS \
-  --number_islands 40 --bp_iterations 10 --num_mutations 1 \
-  --time_series_length 40 --window_step 5 \
-  --num_training_windows "$NTW" --num_validation_sets 5 --num_training_sets 2000 \
-  --get_train_data_by PER --per_alpha 0.6 --per_lambda 0.007 --per_epsilon 1e-8 \
-  --online_series_seed "$SEED" --rounds_per_generation 1 \
-  --speciation_method onenas --repopulation_frequency 50 \
-  --generated_population_size 5 --elite_population_size 8 \
-  --total_generation "$TOTGEN" \
-  --selection_metric mse \
-  --max_pred_sd_ratio 3.0 \
-  --possible_node_types simple UGRNN MGU GRU delta LSTM \
-  --normalize none --compare_with_naive --control_size_method none \
-  --write_elite_predictions \
-  --send_to_pi --pi_mode global_best --pi_host 127.0.0.1 --pi_port $PI_PORT \
-  --std_message_level INFO --file_message_level INFO \
-  --output_directory "$OUT"
+RUN=0
+for SEED in $SEEDS; do
+RUN=$((RUN+1))
+OUT="/anvil/scratch/x-zlyu2/results_v2/best_40isl_pi_global/${SET}_seed${SEED}"
+mkdir -p "$OUT"
+echo "### run $RUN of $(echo $SEEDS | wc -w): seed $SEED  ($(date))"
+  echo "BEST RUN (frozen primary @ 40 islands, global_best -> pi) $SET seed=$SEED -> $OUT"
+  time srun --mpi=pmi2 "$ONENAS/build/mpi/onenas_mpi" \
+    --training_filenames $FILES \
+    --pooled_panel --time_offset 1 \
+    --input_parameter_names RET RET_CS_IN BA_SPREAD ILLIQUIDITY REV21_1 TURN_RATIO VOL21 \
+    --output_parameter_names RET_CS \
+    --number_islands 40 --bp_iterations 10 --num_mutations 1 \
+    --time_series_length 40 --window_step 5 \
+    --num_training_windows "$NTW" --num_validation_sets 5 --num_training_sets 2000 \
+    --get_train_data_by PER --per_alpha 0.6 --per_lambda 0.007 --per_epsilon 1e-8 \
+    --online_series_seed "$SEED" --rounds_per_generation 1 \
+    --speciation_method onenas --repopulation_frequency 50 \
+    --generated_population_size 5 --elite_population_size 8 \
+    --total_generation "$TOTGEN" \
+    --selection_metric mse \
+    --max_pred_sd_ratio 3.0 \
+    --possible_node_types simple UGRNN MGU GRU delta LSTM \
+    --normalize none --compare_with_naive --control_size_method none \
+    --write_elite_predictions \
+    --send_to_pi --pi_mode global_best --pi_host 127.0.0.1 --pi_port $PI_PORT \
+    --std_message_level INFO --file_message_level INFO \
+    --output_directory "$OUT"
+
+done
 
 kill $TUNNEL_PID 2>/dev/null

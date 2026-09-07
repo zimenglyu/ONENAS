@@ -64,8 +64,8 @@ the pi server and in the run script.
 |---|---|---|
 | pi | `scripts/pi/pi_server.sh` | evaluates what the master sends (settings: SET, DATA, PORT, INA219) |
 | pi | `scripts/pi/pi_tunnel.sh` | reverse tunnel to Anvil for the cluster runs (settings: ANVIL_USER, LOGIN_NODE, PORT) |
-| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_global.sh` | the 40-island best run, global best test (settings: SET, SEED, LOGIN_NODE) |
-| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_islands.sh` | the 40-island best run, island ensemble test (settings: SET, SEED, LOGIN_NODE) |
+| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_global.sh` | the 40-island best run, global best test, one job per seed list (settings: SET, SEEDS, LOGIN_NODE) |
+| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_islands.sh` | the 40-island best run, island ensemble test, one job per seed list (settings: SET, SEEDS, LOGIN_NODE) |
 | Mac | `scripts/pi/mac_global.sh` | same run from a laptop on the pi's network, global best test (settings: SET, SEED, DATA, PI_HOST) |
 | Mac | `scripts/pi/mac_islands.sh` | same run from a laptop, island ensemble test |
 
@@ -127,5 +127,17 @@ files for your account.
    sh scripts/pi/mac_islands.sh
    ```
 
-Results are on the pi in `test_output/pi_server/set<SET>/`: `pi_evaluations.csv`,
-the per-generation prediction files and the received genomes under `genomes/`.
+Results are on the pi in `test_output/pi_server/set<SET>/<mode>_seed<seed>/`:
+`pi_evaluations.csv`, the per-generation prediction files and the received genomes
+under `genomes/`.
+
+## Repeated runs
+
+Each cluster script runs the seeds in its `SEEDS` list one after another inside a
+single job. Every run gets its own directory on the pi, keyed by mode and seed, and
+its own idle baseline metered while the pi waits for that run's first message. The
+pi server does **not** need restarting between runs: start it once and leave it up
+for the whole job.
+
+Run one job at a time. The pi serves a single connection, so two jobs submitted
+together would both reach for it and interleave.
