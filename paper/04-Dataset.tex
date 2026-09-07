@@ -6,6 +6,11 @@
 %
 % SCOPE: experimental detail only -- what was run, on what data, scored
 % how. No findings, no interpretation; those live in the Results section.
+%
+% \text comes from amsmath, which this template does not load; the
+% fallback keeps the file self-contained if any \text survives an edit.
+% It is a no-op when amsmath is present.
+\providecommand{\text}[1]{\mathrm{#1}}
 
 \section{Data}
 
