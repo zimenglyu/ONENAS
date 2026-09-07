@@ -12,7 +12,8 @@
 # Same run as best_run_40isl.sbatch; additionally, after every generation,
 # the generation's GLOBAL BEST genome
 # is sent to a pi_genome_server, which evaluates it on that generation's test
-# window (see scripts/pi/README.md). The pi must be running
+# window (setup guide: the Getting Started with HPC page in Notion). The pi
+# must be running
 #   scripts/pi/pi_server.sh       (with the same SET as below)
 # and holding open a reverse tunnel to LOGIN_NODE (below) before this is submitted.
 # One panel-set per job: the pi evaluates one panel-set at a time.
@@ -45,7 +46,7 @@ PI_PORT=5555
 SET="set$SET"
 
 # forward this compute node's $PI_PORT to the login node, where the pi's
-# reverse tunnel is listening (see scripts/pi/README.md for the keys)
+# reverse tunnel is listening (see the Notion page for the ssh keys)
 ssh -N -o ExitOnForwardFailure=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -L $PI_PORT:localhost:$PI_PORT $LOGIN_NODE &
 TUNNEL_PID=$!
 sleep 3
