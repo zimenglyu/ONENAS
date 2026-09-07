@@ -188,14 +188,13 @@ restricted to the cells they have in common and $n$ is stated.
 
 \subsection{Compute Environment}
 
-All searches ran on ACCESS Anvil, one 128-core node per run under MPI with
-one master and 127 workers. Search cost is measured from job accounting
-rather than estimated: a four-panel ONE-NAS run at 40 islands charges 785
-core-hours, against 0.03 core-hours for an online-LSTM run and 0.77 for a
-periodic-LSTM run. The ONE-NAS figure reflects the charged allocation; the
-same configuration completes on approximately 48 core-hours of useful
-work, because a majority of wall time is serial evaluation on the master
-rank rather than parallel work on the workers.
+All searches ran on ACCESS Anvil. Each run occupied one node of the
+\texttt{wholenode} partition with 128 MPI ranks, one acting as the master
+that maintains the island populations and distributes genomes, and the
+remaining 127 as workers that train and evaluate them. The island count
+is a search parameter and is independent of the rank count, so the worker
+pool is identical across every configuration reported. Baselines are
+single-process and were run on the same hardware.
 
 \subsection{Pre-Registration}
 
