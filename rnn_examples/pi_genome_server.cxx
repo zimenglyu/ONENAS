@@ -23,7 +23,12 @@
 //
 // Every genome gets a row in pi_evaluations.csv with MSE/MAE on the window,
 // the naive (previous value) MSE, inference time, throughput and, with
-// --ina219, INA219 power/energy during inference. The ensemble row has
+// --ina219, INA219 power/energy during inference. One inference over the
+// window takes milliseconds, too short to meter, so the inference is repeated
+// until at least --min_measure_ms (default 100) have elapsed and the time and
+// energy are reported PER INFERENCE (total / repeats). The board's idle power
+// is metered for --idle_measure_ms (default 2000) at startup and reported as
+// idle_power_mw; energy_net_mj is the energy above idle. The ensemble row has
 // island = -1 and genome_id = -1.
 
 #include <netinet/in.h>
@@ -33,6 +38,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <thread>
 #include <fstream>
 using std::ofstream;
 
@@ -122,9 +128,13 @@ void write_global_format(const string& filename, const string& prefix, const vec
 
 struct GenomeResult {
     int32_t island, genome_id, parameters;
-    double mse, mae, naive_mse, build_ms, inference_ms;
+    double mse, mae, naive_mse, build_ms;
+    double inference_ms;   // per inference over the window (measured_ms / repeats)
+    int32_t repeats;       // inferences run inside the measured window
+    double measured_ms;    // length of the metered window
     int32_t rows;
-    INA219Stats power;
+    INA219Stats power;     // over the metered window; energy_mj is per inference
+    double energy_net_mj;  // per inference, above the idle baseline
     Series3 predictions;
 };
 
@@ -147,6 +157,10 @@ int main(int argc, char** argv) {
     bool use_ina219 = argument_exists(arguments, "--ina219");
     string ina219_device = "/dev/i2c-1";
     get_argument(arguments, "--ina219_device", false, ina219_device);
+    double min_measure_ms = 100.0;
+    get_argument(arguments, "--min_measure_ms", false, min_measure_ms);
+    int32_t idle_measure_ms = 2000;
+    get_argument(arguments, "--idle_measure_ms", false, idle_measure_ms);
 
     // the same data, sliced the same way as onenas_mpi's main()
     TimeSeriesSets* time_series_sets = TimeSeriesSets::generate_from_arguments(arguments);
@@ -158,10 +172,36 @@ int main(int argc, char** argv) {
     INA219 ina219;
     INA219Sampler ina219_sampler;
     bool ina219_active = false;
+    double idle_power_mw = 0.0;
     if (use_ina219) {
         if (ina219.open_device(ina219_device.c_str()) && ina219.configure()) {
-            ina219_active = true;
-            Log::info("INA219 power monitor enabled on %s\n", ina219_device.c_str());
+            INA219Reading first;
+            if (!ina219.read_reading(first)) {
+                Log::warning("INA219 found on %s but a reading failed, continuing without power monitoring\n", ina219_device.c_str());
+            } else {
+                ina219_active = true;
+                Log::info("INA219 power monitor enabled on %s: bus %.3f V, shunt %.3f mV, current %.1f mA, power %.1f mW\n",
+                    ina219_device.c_str(), first.bus_voltage_v, first.shunt_voltage_mv, first.current_ma, first.power_mw);
+                if (first.bus_voltage_v < 0.5) {
+                    Log::warning("INA219 bus voltage is ~0 V: VIN- is not connected to the load, check the wiring\n");
+                }
+                if (fabs(first.current_ma) < 1.0) {
+                    Log::warning("INA219 current is ~0 mA: the shunt is not in the supply path, check the wiring\n");
+                }
+                // idle baseline: the board's draw while nothing is being evaluated
+                ina219_sampler.start(&ina219);
+                int64_t idle_start = INA219Sampler::now_us();
+                std::this_thread::sleep_for(std::chrono::milliseconds(idle_measure_ms));
+                int64_t idle_end = INA219Sampler::now_us();
+                ina219_sampler.stop();
+                INA219Stats idle = ina219_sampler.get_stats(idle_start, idle_end);
+                idle_power_mw = idle.power_mw_avg;
+                Log::info("INA219 idle baseline over %d ms (%d readings, %.1f readings/s): %.3f V, %.1f mA, %.1f mW\n",
+                    idle_measure_ms, idle.sample_count, idle.sample_count * 1000.0 / idle_measure_ms, idle.bus_voltage_v_avg, idle.current_ma_avg, idle_power_mw);
+                if (idle.sample_count < 10) {
+                    Log::warning("INA219 delivered only %d readings in %d ms: energy numbers will be coarse\n", idle.sample_count, idle_measure_ms);
+                }
+            }
         } else {
             Log::warning("INA219 requested but could not open %s, continuing without power monitoring\n", ina219_device.c_str());
         }
@@ -171,8 +211,8 @@ int main(int argc, char** argv) {
     bool new_results = access(results_path.c_str(), F_OK) != 0;
     ofstream results(results_path, std::ios::app);
     if (new_results) {
-        results << "generation,mode,island,genome_id,parameters,series,rows,mse,mae,naive_mse,build_ms,inference_ms,per_point_us,throughput_per_s,"
-                << "ina219_samples,bus_voltage_v_avg,current_ma_avg,power_mw_avg,energy_mj,energy_per_point_mj" << std::endl;
+        results << "generation,mode,island,genome_id,parameters,series,rows,mse,mae,naive_mse,build_ms,inference_ms,repeats,measured_ms,per_point_us,throughput_per_s,"
+                << "ina219_samples,bus_voltage_v_avg,current_ma_avg,power_mw_avg,idle_power_mw,energy_mj,energy_net_mj,energy_per_point_mj" << std::endl;
     }
     if (save_genomes) {
         mkdir((output_directory + "/genomes").c_str(), 0755);
@@ -258,20 +298,35 @@ int main(int argc, char** argv) {
                 }
                 r.build_ms = elapsed_ms(build_start);
 
-                // inference: one forward pass per test series (per stock in pooled panel mode)
+                // inference: one forward pass per test series (per stock in pooled panel mode).
+                // Repeated until the metered window is at least min_measure_ms long; the first
+                // pass keeps the predictions, the time and energy are reported per pass.
                 if (ina219_active) {
                     ina219_sampler.start(&ina219);
                 }
+                int64_t window_start = INA219Sampler::now_us();
                 auto inference_start = std::chrono::high_resolution_clock::now();
-                for (int32_t n = 0; n < (int32_t) test_inputs.size(); n++) {
-                    r.predictions.push_back(rnn->get_predictions(test_inputs[n], test_outputs[n], false, 0.0));
-                }
-                r.inference_ms = elapsed_ms(inference_start);
+                r.repeats = 0;
+                do {
+                    for (int32_t n = 0; n < (int32_t) test_inputs.size(); n++) {
+                        vector<vector<double> > p = rnn->get_predictions(test_inputs[n], test_outputs[n], false, 0.0);
+                        if (r.repeats == 0) {
+                            r.predictions.push_back(p);
+                        }
+                    }
+                    r.repeats++;
+                } while (elapsed_ms(inference_start) < min_measure_ms);
+                r.measured_ms = elapsed_ms(inference_start);
+                int64_t window_end = INA219Sampler::now_us();
+                r.inference_ms = r.measured_ms / r.repeats;
                 if (ina219_active) {
                     ina219_sampler.stop();
-                    r.power = ina219_sampler.get_stats();
+                    r.power = ina219_sampler.get_stats(window_start, window_end);
+                    r.power.energy_mj /= r.repeats;  // per inference
+                    r.energy_net_mj = (r.power.power_mw_avg - idle_power_mw) * (r.inference_ms / 1000.0);
                 } else {
                     r.power = INA219Stats();
+                    r.energy_net_mj = 0.0;
                 }
                 delete rnn;
                 delete genome;
@@ -286,16 +341,21 @@ int main(int argc, char** argv) {
                 e.island = -1;
                 e.genome_id = -1;
                 e.parameters = 0;
-                e.build_ms = e.inference_ms = 0.0;
+                e.build_ms = e.inference_ms = e.measured_ms = 0.0;
+                e.repeats = 0;
                 e.power = INA219Stats();
+                e.energy_net_mj = 0.0;
                 e.predictions = gen_results[0].predictions;
                 for (auto& series : e.predictions) for (auto& outv : series) for (double& v : outv) v = 0.0;
                 for (const GenomeResult& r : gen_results) {
                     e.parameters += r.parameters;
                     e.build_ms += r.build_ms;
-                    e.inference_ms += r.inference_ms;
+                    e.inference_ms += r.inference_ms;   // the ensemble runs its members one after another
+                    e.measured_ms += r.measured_ms;
+                    e.repeats += r.repeats;
                     e.power.sample_count += r.power.sample_count;
                     e.power.energy_mj += r.power.energy_mj;
+                    e.energy_net_mj += r.energy_net_mj;
                     e.power.bus_voltage_v_avg += r.power.bus_voltage_v_avg / gen_results.size();
                     e.power.current_ma_avg += r.power.current_ma_avg / gen_results.size();
                     e.power.power_mw_avg += r.power.power_mw_avg / gen_results.size();
@@ -313,18 +373,23 @@ int main(int argc, char** argv) {
                 double per_point_us = r.rows > 0 ? r.inference_ms * 1000.0 / r.rows : 0.0;
                 double throughput = r.inference_ms > 0 ? r.rows / (r.inference_ms / 1000.0) : 0.0;
                 if (ensemble) {
-                    Log::info("generation %d ensemble of %d island bests: MSE %lf, MAE %lf (naive MSE %lf), inference %.1f ms total\n", g, (int32_t) gen_results.size() - 1, r.mse, r.mae, r.naive_mse, r.inference_ms);
+                    Log::info("generation %d ensemble of %d island bests: MSE %lf, MAE %lf (naive MSE %lf), inference %.2f ms total\n", g, (int32_t) gen_results.size() - 1, r.mse, r.mae, r.naive_mse, r.inference_ms);
                 } else {
-                    Log::info("generation %d island %d genome %d (%d params): MSE %lf, MAE %lf (naive MSE %lf), build %.1f ms, inference %.1f ms, %.1f us/point, %.0f points/s\n", g, r.island, r.genome_id, r.parameters, r.mse, r.mae, r.naive_mse, r.build_ms, r.inference_ms, per_point_us, throughput);
+                    Log::info("generation %d island %d genome %d (%d params): MSE %lf, MAE %lf (naive MSE %lf), build %.2f ms, inference %.3f ms (%d repeats in %.1f ms), %.2f us/point, %.0f points/s\n", g, r.island, r.genome_id, r.parameters, r.mse, r.mae, r.naive_mse, r.build_ms, r.inference_ms, r.repeats, r.measured_ms, per_point_us, throughput);
                 }
-                if (ina219_active && r.power.sample_count > 0) {
-                    Log::info("  INA219 (%d samples): bus %.3f V, current avg %.1f mA, power avg %.1f mW, energy %.3f mJ (%.6f mJ/point)\n", r.power.sample_count, r.power.bus_voltage_v_avg, r.power.current_ma_avg, r.power.power_mw_avg, r.power.energy_mj, r.rows > 0 ? r.power.energy_mj / r.rows : 0.0);
+                if (ina219_active) {
+                    if (r.power.sample_count > 0) {
+                        Log::info("  INA219 (%d readings): %.3f V, %.1f mA, %.1f mW (idle %.1f mW); per inference %.4f mJ, net %.4f mJ, %.6f mJ/point\n", r.power.sample_count, r.power.bus_voltage_v_avg, r.power.current_ma_avg, r.power.power_mw_avg, idle_power_mw, r.power.energy_mj, r.energy_net_mj, r.rows > 0 ? r.power.energy_mj / r.rows : 0.0);
+                    } else {
+                        Log::warning("  INA219: no readings during the %.1f ms window\n", r.measured_ms);
+                    }
                 }
                 results << g << "," << pi_mode_name(msg.mode) << "," << r.island << "," << r.genome_id << "," << r.parameters << ","
                         << test_inputs.size() << "," << r.rows << "," << r.mse << "," << r.mae << "," << r.naive_mse << ","
-                        << r.build_ms << "," << r.inference_ms << "," << per_point_us << "," << throughput << ","
+                        << r.build_ms << "," << r.inference_ms << "," << r.repeats << "," << r.measured_ms << "," << per_point_us << "," << throughput << ","
                         << r.power.sample_count << "," << r.power.bus_voltage_v_avg << "," << r.power.current_ma_avg << ","
-                        << r.power.power_mw_avg << "," << r.power.energy_mj << "," << (r.rows > 0 ? r.power.energy_mj / r.rows : 0.0) << std::endl;
+                        << r.power.power_mw_avg << "," << idle_power_mw << "," << r.power.energy_mj << "," << r.energy_net_mj << ","
+                        << (r.rows > 0 ? r.power.energy_mj / r.rows : 0.0) << std::endl;
             }
 
             if (write_predictions && !gen_results.empty()) {

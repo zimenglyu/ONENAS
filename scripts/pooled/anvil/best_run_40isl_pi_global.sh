@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J onenas_best40_pi_islands
+#SBATCH -J onenas_best40_pi_global
 #SBATCH -A cis251123
 #SBATCH -p wholenode
 #SBATCH -N 1
@@ -8,9 +8,9 @@
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 #
-# THE BEST / FINAL CONFIGURATION, streamed to a Raspberry Pi (island_best).
+# THE BEST / FINAL CONFIGURATION, streamed to a Raspberry Pi (global_best).
 # Same run as best_run_40isl.sbatch; additionally, after every generation,
-# the best genome of EVERY island (the pi scores each and their ensemble)
+# the generation's GLOBAL BEST genome
 # is sent to a pi_genome_server, which evaluates it on that generation's test
 # window (see scripts/pi/README.md). The pi must be running
 #   scripts/pi/pi_server.sh       (with the same SET as below)
@@ -26,7 +26,7 @@
 # score_ensemble.py --ensemble island_champions --combine rank_mean.
 #
 # Run from the login-node shell opened by scripts/pi/pi_tunnel.sh:
-#   sbatch scripts/pooled/anvil/best_run_40isl_pi_islands.sbatch
+#   sbatch scripts/pooled/anvil/best_run_40isl_pi_global.sh
 # Settings (SET, SEED, LOGIN_NODE) are the variables below.
 
 module load gcc/11.2.0 openmpi/4.0.6 libtiff/4.1.0
@@ -60,11 +60,11 @@ case "$SET" in
   *) echo "unknown set $SET"; exit 1 ;;
 esac
 
-OUT="/anvil/scratch/x-zlyu2/results_v2/best_40isl_pi_islands/${SET}_seed${SEED}"
+OUT="/anvil/scratch/x-zlyu2/results_v2/best_40isl_pi_global/${SET}_seed${SEED}"
 mkdir -p "$OUT"
 FILES=$(ls "$DATA/${SET}_core7/"*.csv | grep -v panel_)
 
-echo "BEST RUN (frozen primary @ 40 islands, island_best -> pi) $SET seed=$SEED -> $OUT"
+echo "BEST RUN (frozen primary @ 40 islands, global_best -> pi) $SET seed=$SEED -> $OUT"
 time srun --mpi=pmi2 "$ONENAS/build/mpi/onenas_mpi" \
   --training_filenames $FILES \
   --pooled_panel --time_offset 1 \
@@ -83,7 +83,7 @@ time srun --mpi=pmi2 "$ONENAS/build/mpi/onenas_mpi" \
   --possible_node_types simple UGRNN MGU GRU delta LSTM \
   --normalize none --compare_with_naive --control_size_method none \
   --write_elite_predictions \
-  --send_to_pi --pi_mode island_best --pi_host 127.0.0.1 --pi_port $PI_PORT \
+  --send_to_pi --pi_mode global_best --pi_host 127.0.0.1 --pi_port $PI_PORT \
   --std_message_level ERROR --file_message_level ERROR \
   --output_directory "$OUT"
 

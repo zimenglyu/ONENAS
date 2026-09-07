@@ -21,6 +21,25 @@ time, inference time, throughput and (with `--ina219`) INA219 power and energy.
 In `island_best` mode the ensemble gets a row with `island = -1, genome_id = -1`.
 `--save_genomes` also keeps every received genome under `genomes/`.
 
+### Timing and power
+
+One inference over the window takes milliseconds, too short to meter, so the
+server repeats it until at least `--min_measure_ms` (default 100) have elapsed
+and reports time and energy **per inference** (`inference_ms`, `energy_mj`;
+`repeats` and `measured_ms` say how the window was filled). The predictions
+come from the first pass.
+
+The INA219 measures the whole board, so at startup the server meters the idle
+draw for `--idle_measure_ms` (default 2000) and reports it as `idle_power_mw`;
+`energy_net_mj` is the energy above idle. The sampler reads the sensor every
+~2-3 ms (I2C at 100 kHz) and integrates power over the metered window.
+
+On startup with `--ina219` the log shows the first reading and the idle
+baseline. Check them: bus voltage should be ~5 V and current well above 0 mA;
+the server warns if either is ~0 (wiring), if the sensor is missing
+(`i2cdetect -y 1` should show `40`), or if it delivers fewer than 10 readings
+in the idle window.
+
 ## How the pi knows the data
 
 The pi loads and slices **the same files with the same flags** as the master
@@ -45,8 +64,8 @@ the pi server and in the run script.
 |---|---|---|
 | pi | `scripts/pi/pi_server.sh` | evaluates what the master sends (settings: SET, DATA, PORT, INA219) |
 | pi | `scripts/pi/pi_tunnel.sh` | reverse tunnel to Anvil for the cluster runs (settings: ANVIL_USER, LOGIN_NODE, PORT) |
-| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_global.sbatch` | the 40-island best run, global best test (settings: SET, SEED, LOGIN_NODE) |
-| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_islands.sbatch` | the 40-island best run, island ensemble test (settings: SET, SEED, LOGIN_NODE) |
+| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_global.sh` | the 40-island best run, global best test (settings: SET, SEED, LOGIN_NODE) |
+| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_islands.sh` | the 40-island best run, island ensemble test (settings: SET, SEED, LOGIN_NODE) |
 | Mac | `scripts/pi/mac_global.sh` | same run from a laptop on the pi's network, global best test (settings: SET, SEED, DATA, PI_HOST) |
 | Mac | `scripts/pi/mac_islands.sh` | same run from a laptop, island ensemble test |
 
@@ -91,8 +110,8 @@ files for your account.
 3. In that login-node shell, one of:
    ```sh
    cd ~/ONENAS
-   sbatch scripts/pooled/anvil/best_run_40isl_pi_global.sbatch
-   sbatch scripts/pooled/anvil/best_run_40isl_pi_islands.sbatch
+   sbatch scripts/pooled/anvil/best_run_40isl_pi_global.sh
+   sbatch scripts/pooled/anvil/best_run_40isl_pi_islands.sh
    ```
 4. Keep both pi terminals open until the job finishes.
 
