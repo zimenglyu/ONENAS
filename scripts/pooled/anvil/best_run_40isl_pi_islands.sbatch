@@ -13,9 +13,9 @@
 # the best genome of EVERY island (the pi scores each and their ensemble)
 # is sent to a pi_genome_server, which evaluates it on that generation's test
 # window (see scripts/pi/README.md). The pi must be running
-#   scripts/pi/pi_server_40isl.sh <set>       (same SET as this job's array task)
+#   scripts/pi/pi_server.sh       (with the same SET as below)
 # and holding open a reverse tunnel to LOGIN_NODE (below) before this is submitted.
-# Submit ONE array task per job: the pi evaluates one panel-set at a time.
+# One panel-set per job: the pi evaluates one panel-set at a time.
 #
 # = the frozen registered primary (PRIMARY.md, ac58a56) at the headline
 #   width of 40 islands (Amendment 6 protocol-symmetric selection).
@@ -25,17 +25,22 @@
 # VOL21 -> RET_CS target), eval clock 2020-2024, sleeves-book scoring via
 # score_ensemble.py --ensemble island_champions --combine rank_mean.
 #
-# Usage (one panel-set x seed per job; the pi serves that set):
-#   sbatch --array=1 --export=ALL,SEED=42 best_run_40isl_pi_islands.sbatch
+# Run from the login-node shell opened by scripts/pi/pi_tunnel.sh:
+#   sbatch scripts/pooled/anvil/best_run_40isl_pi_islands.sbatch
+# Settings (SET, SEED, LOGIN_NODE) are the variables below.
 
 module load gcc/11.2.0 openmpi/4.0.6 libtiff/4.1.0
 
 ONENAS="$HOME/ONENAS"
 DATA="/anvil/projects/x-cis251123/shared/panels_core7"
-SEED="${SEED:-42}"
-SET="set${SLURM_ARRAY_TASK_ID:-1}"
-LOGIN_NODE="login03"   # the login node the pi's reverse tunnel is attached to
+
+# ---- settings ----
+SET=1                  # panel-set 1..4, must match pi_server.sh on the pi
+SEED=42
+LOGIN_NODE="login03"   # the login node pi_tunnel.sh is attached to
 PI_PORT=5555
+# ------------------
+SET="set$SET"
 
 # forward this compute node's $PI_PORT to the login node, where the pi's
 # reverse tunnel is listening (see scripts/pi/README.md for the keys)

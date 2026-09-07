@@ -35,83 +35,78 @@ Wire format: `common/pi_protocol.hxx`. Sender: `mpi/pi_sender.hxx`
 (background thread, retries every 5 s, queue drained before the master exits).
 Receiver: `rnn_examples/pi_genome_server.cxx`. Power monitor: `common/ina219.hxx`.
 
-## Anvil -> pi: the 40-island best run on the core7 panels
+## The scripts
 
-Two versions of `scripts/pooled/anvil/best_run_40isl.sbatch`, identical to it
-apart from the tunnel and the `--send_to_pi` flags:
+Every script runs with no arguments; its settings (panel-set, seed, addresses)
+are the variables at the top of the file. Set `SET` to the same panel-set in
+the pi server and in the run script.
 
-- `scripts/pooled/anvil/best_run_40isl_pi_global.sbatch` — global best test
-- `scripts/pooled/anvil/best_run_40isl_pi_islands.sbatch` — island ensemble test
-
-The pi side is `scripts/pi/pi_server_40isl.sh <set> [DATA]`, which slices the
-same panel with the same flags as the sbatch. The pi needs a copy of
-`set{1..4}_core7/` (default location `~/panels_core7`). Run one panel-set per
-job (`--array=1`, `2`, ...) with the pi serving that set. Through the tunnel
-the master talks to `127.0.0.1:5555` (`--pi_host` / `--pi_port` in the sbatch;
-the in-code defaults `DEFAULT_PI_HOST` / `DEFAULT_PI_PORT` in `mpi/onenas_mpi.cxx`
-only apply when those flags are omitted).
-
-### Laptop -> pi, no tunnel
-
-On the same network the run can also come from a Mac:
-```sh
-# pi
-INA219=1 ./scripts/pi/pi_server_40isl.sh 1 ~/panels_core7
-# mac (needs the panels too, DATA=~/panels_core7 by default)
-PI_HOST=192.168.0.70 ./scripts/pi/best_run_40isl_pi_mac.sh global_best 1 42
-PI_HOST=192.168.0.70 ./scripts/pi/best_run_40isl_pi_mac.sh island_best 1 42
-```
-
-### Keys (one time)
-
-| key | make it on | put its `.pub` in |
+| where | script | what |
 |---|---|---|
-| Anvil key (compute node -> login node) | Anvil | Anvil `~/.ssh/authorized_keys` |
-| Pi key (pi -> Anvil) | Pi | Anvil `~/.ssh/authorized_keys` |
+| pi | `scripts/pi/pi_server.sh` | evaluates what the master sends (settings: SET, DATA, PORT, INA219) |
+| pi | `scripts/pi/pi_tunnel.sh` | reverse tunnel to Anvil for the cluster runs (settings: ANVIL_USER, LOGIN_NODE, PORT) |
+| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_global.sbatch` | the 40-island best run, global best test (settings: SET, SEED, LOGIN_NODE) |
+| Anvil | `scripts/pooled/anvil/best_run_40isl_pi_islands.sbatch` | the 40-island best run, island ensemble test (settings: SET, SEED, LOGIN_NODE) |
+| Mac | `scripts/pi/mac_global.sh` | same run from a laptop on the pi's network, global best test (settings: SET, SEED, DATA, PI_HOST) |
+| Mac | `scripts/pi/mac_islands.sh` | same run from a laptop, island ensemble test |
 
-On Anvil:
+The two sbatch files and the two Mac scripts are `best_run_40isl.sbatch` plus
+the pi flags; the ONE-NAS flags are identical. The pi needs a copy of the
+panels, and so does the Mac: unzip `panels_core7.zip` in the repo root so that
+`panels_core7/set{1..4}_core7/*.csv` exists (the directory is gitignored).
+
+## Setup (once)
+
+Pi:
 ```sh
-ssh-keygen -t ed25519 -N ""
-cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
-chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys
-```
-On the pi:
-```sh
+cd ~/Documents/code/ONENAS && git pull
+cd build && cmake .. && make pi_genome_server
 ssh-keygen -t ed25519
 cat ~/.ssh/id_ed25519.pub      # append this line to ~/.ssh/authorized_keys on Anvil
 ```
-
-### Build (one time)
 
 Anvil:
 ```sh
 cd ~/ONENAS && git pull
 module load gcc/11.2.0 openmpi/4.0.6 libtiff/4.1.0 cmake
 cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && make onenas_mpi
+ssh-keygen -t ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys
 ```
-Edit the sbatch: `#SBATCH -A`, `ONENAS=`, `OUT=`, `LOGIN_NODE`.
+(the compute node reaches the login node with the Anvil key; the pi reaches
+Anvil with the pi key.) Set `#SBATCH -A`, `ONENAS=` and `OUT=` in the sbatch
+files for your account.
 
-Pi:
-```sh
-cd ~/Documents/code/ONENAS && git pull
-cd build && cmake .. && make pi_genome_server
-```
+## Run: Anvil -> pi
 
-### Run (every time, in this order)
-
-1. Pi, terminal 1 (`INA219=1` to measure power):
+1. Pi, terminal 1:
    ```sh
-   INA219=1 ./scripts/pi/pi_server_40isl.sh 1 ~/panels_core7
+   sh scripts/pi/pi_server.sh
    ```
-2. Pi, terminal 2 (same `loginNN` as `LOGIN_NODE` in the sbatch):
+2. Pi, terminal 2 (opens the tunnel and leaves you on the login node):
    ```sh
-   ssh -o ServerAliveInterval=60 -R 5555:localhost:5555 x-zlyu2@login03.anvil.rcac.purdue.edu
+   sh scripts/pi/pi_tunnel.sh
    ```
-3. In that shell:
+3. In that login-node shell, one of:
    ```sh
    cd ~/ONENAS
-   sbatch --array=1 --export=ALL,SEED=42 scripts/pooled/anvil/best_run_40isl_pi_global.sbatch
-   # or best_run_40isl_pi_islands.sbatch
+   sbatch scripts/pooled/anvil/best_run_40isl_pi_global.sbatch
+   sbatch scripts/pooled/anvil/best_run_40isl_pi_islands.sbatch
    ```
-4. Keep both pi terminals open until the job finishes. Results land in
-   `test_output/pi_server_40isl/set1/` on the pi.
+4. Keep both pi terminals open until the job finishes.
+
+## Run: Mac -> pi
+
+1. Pi:
+   ```sh
+   sh scripts/pi/pi_server.sh
+   ```
+2. Mac, one of:
+   ```sh
+   sh scripts/pi/mac_global.sh
+   sh scripts/pi/mac_islands.sh
+   ```
+
+Results are on the pi in `test_output/pi_server/set<SET>/`: `pi_evaluations.csv`,
+the per-generation prediction files and the received genomes under `genomes/`.
