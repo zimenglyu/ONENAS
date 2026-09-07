@@ -84,7 +84,7 @@ time srun --mpi=pmi2 "$ONENAS/build/mpi/onenas_mpi" \
   --normalize none --compare_with_naive --control_size_method none \
   --write_elite_predictions \
   --send_to_pi --pi_mode global_best --pi_host 127.0.0.1 --pi_port $PI_PORT \
-  --std_message_level ERROR --file_message_level ERROR \
+  --std_message_level INFO --file_message_level INFO \
   --output_directory "$OUT"
 
 kill $TUNNEL_PID 2>/dev/null

@@ -49,5 +49,5 @@ time mpirun -np "$NP" "$ONENAS/build/mpi/onenas_mpi" \
   --normalize none --compare_with_naive --control_size_method none \
   --write_elite_predictions \
   --send_to_pi --pi_mode "$MODE" --pi_host "$PI_HOST" --pi_port "$PI_PORT" \
-  --std_message_level ERROR --file_message_level ERROR \
+  --std_message_level INFO --file_message_level INFO \
   --output_directory "$OUT" 2>&1 | tee "$OUT/run.log"
