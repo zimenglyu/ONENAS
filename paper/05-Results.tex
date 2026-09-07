@@ -26,11 +26,15 @@
 \toprule
  & 2022 & 2023 & 2024 & 2022--24 \\
 \midrule
-ONE-NAS (40 isl., sleeves book)              & $+6.1$\se{0.8}  & $+12.4$\se{0.7} & $+6.4$\se{0.5}  & $+27.5$\se{1.1} \\
+ONE-NAS (60 isl., sleeves book)              & $+6.9$\se{0.7}  & $+13.7$\se{0.6} & $+7.0$\se{0.5}  & $+30.1$\se{0.9} \\
+ONE-NAS (40 isl., sleeves book)              & $+6.1$\se{0.8}  & $+12.4$\se{0.7} & $+6.3$\se{0.5}  & $+27.5$\se{1.1} \\
+ONE-NAS (20 isl., sleeves book)              & $+5.1$\se{0.5}  & $+13.3$\se{1.0} & $+6.3$\se{0.6}  & $+27.4$\se{1.1} \\
+\midrule
 ONE-NAS (40 isl., banded book)$^{a}$         & $+12.5$\se{1.2} & $+14.6$\se{1.3} & $+3.4$\se{0.9}  & $+33.9$\se{1.8} \\
 ONE-NAS (40 isl., Algorithm 1 book)$^{b}$    & $+1.3$\se{1.6}  & $+12.8$\se{1.0} & $+10.8$\se{1.2} & $+25.0$\se{1.8} \\
 \midrule
-ONE-NAS single champion (8 isl., sleeves)$^{c}$ & $+3.1$\se{1.8} & $+1.7$\se{1.3} & $+2.7$\se{1.1} & $+8.5$ \\
+ONE-NAS single champion (60 isl.)$^{c}$      & ---             & ---             & ---             & $+1.0$ \\
+ONE-NAS single champion (20 isl.)$^{c}$      & ---             & ---             & ---             & $+4.7$ \\
 Online LSTM                                  & $+1.2$\se{1.3}  & $+4.5$\se{1.2}  & $+3.8$\se{0.7}  & $+11.3$\se{1.8} \\
 Online GRU                                   & $+2.1$\se{1.0}  & $+3.1$\se{1.9}  & $+5.0$\se{0.8}  & $+11.7$\se{2.2} \\
 Periodic LSTM (monthly retrain)              & $+1.4$\se{1.0}  & $+3.9$\se{0.8}  & $+6.9$\se{0.6}  & $+14.8$\se{1.0} \\
@@ -46,7 +50,10 @@ row, not an adopted headline.
 $^{b}$Conditional long--short book (rebalance only when all top-10
 predictions are positive and all bottom-10 negative); on rank-normal
 predictions the gate fires daily.
-$^{c}$Published ONE-NAS prediction rule; seeds 42--44 ($n{=}3$).
+$^{c}$Published ONE-NAS prediction rule (single global-best genome) on the
+same runs as the ensemble rows above; full-window figure only, since the
+per-year cells of a single genome are dominated by seed noise.
+Table~\ref{tab:m1} gives the within-run paired comparison.
 $^{d}$Deterministic; one run per panel. All baselines trade the sleeves
 book under identical costs.
 $^{e}$Equal-weight, prior-study benchmark convention; 2022--24 column is
@@ -72,7 +79,8 @@ start). Buy-and-hold follows the prior-study benchmark convention.}
 \toprule
 Comparison & $\Delta$net & paired $t$ \\
 \midrule
-vs.\ ONE-NAS (8 isl.)        & $+7.0$  & $3.49$ \\
+vs.\ ONE-NAS (60 isl.)       & $-2.5$  & $-1.63$ \\
+vs.\ ONE-NAS (20 isl.)       & $+0.2$  & $0.10$ \\
 vs.\ Online LSTM             & $+16.2$ & $7.32$ \\
 vs.\ Online GRU              & $+15.8$ & $6.59$ \\
 vs.\ Periodic LSTM (monthly) & $+12.7$ & $6.66$ \\
@@ -98,8 +106,9 @@ and each other arm, over the (panel, seed) cells the two arms share,
 \toprule
 Arm & $1\times$ & $2\times$ & $3\times$ & $5\times$ & B/E$^{a}$ \\
 \midrule
+ONE-NAS (60 isl.)   & $+30.1$ & $+27.2$ & $+24.4$ & $+18.8$ & $11.6\times$ \\
 ONE-NAS (40 isl.)   & $+27.5$ & $+24.7$ & $+21.8$ & $+16.0$ & $10.6\times$ \\
-ONE-NAS (8 isl.)    & $+20.5$ & $+17.4$ & $+14.4$ & $+8.2$  & $7.7\times$ \\
+ONE-NAS (20 isl.)   & $+27.4$ & $+24.4$ & $+21.5$ & $+15.6$ & $10.3\times$ \\
 Periodic LSTM       & $+14.8$ & $+11.4$ & $+8.0$  & $+1.2$  & $5.4\times$ \\
 Online GRU          & $+11.7$ & $+8.3$  & $+4.9$  & $-1.8$  & $4.5\times$ \\
 Online LSTM         & $+11.3$ & $+8.1$  & $+4.9$  & $-1.5$  & $4.5\times$ \\
@@ -126,12 +135,13 @@ tolerates the harshest cost assumption of any arm.}
 \toprule
 Fleet & Window & Single & Ensemble & $\Delta$net ($t$) & $\Delta$Sharpe ($t$) \\
 \midrule
+60 isl.\ ($n{=}10$) & 2022--24 & $+1.0$ / $0.09$  & $+30.1$ / $0.93$ & $+29.1$ $(18.3)$ & $+0.84$ $(14.1)$ \\
+60 isl.\ ($n{=}10$) & 2020--24 & $-2.1$ / $-0.01$ & $+49.8$ / $0.73$ & $+51.9$ $(16.7)$ & $+0.74$ $(14.3)$ \\
 40 isl.\ ($n{=}10$) & 2022--24 & $+4.5$ / $0.21$  & $+27.5$ / $0.87$ & $+23.0$ $(18.2)$ & $+0.66$ $(14.7)$ \\
 40 isl.\ ($n{=}10$) & 2020--24 & $+2.7$ / $0.08$  & $+45.6$ / $0.68$ & $+42.9$ $(14.6)$ & $+0.60$ $(13.4)$ \\
-8 isl.\ ($n{=}10$)  & 2022--24 & $+8.3$ / $0.33$  & $+20.5$ / $0.70$ & $+12.2$ $(6.7)$  & $+0.37$ $(5.8)$ \\
-8 isl.\ ($n{=}10$)  & 2020--24 & $+12.0$ / $0.21$ & $+32.1$ / $0.52$ & $+20.1$ $(5.5)$  & $+0.30$ $(5.3)$ \\
+20 isl.\ ($n{=}10$) & 2022--24 & $+4.7$ / $0.25$  & $+27.4$ / $0.87$ & $+22.6$ $(14.9)$ & $+0.62$ $(14.9)$ \\
+20 isl.\ ($n{=}10$) & 2020--24 & $-1.5$ / $0.02$  & $+41.6$ / $0.64$ & $+43.0$ $(14.8)$ & $+0.62$ $(16.7)$ \\
 \midrule
-8 isl.\ ($n{=}5$)$^{a}$  & 2016--19 & $+16.3$ / $0.56$ & $+26.0$ / $0.92$ & $+9.7$ $(5.2)$   & $+0.36$ $(4.5)$ \\
 40 isl.\ ($n{=}5$)$^{a}$ & 2016--19 & $+8.9$ / $0.30$  & $+36.7$ / $1.22$ & $+27.8$ $(7.5)$  & $+0.92$ $(6.6)$ \\
 \bottomrule
 \end{tabular}
@@ -168,11 +178,12 @@ adopted.}
 \toprule
 Arm & bps/day & \%/yr & NW $t$ & Beta \\
 \midrule
+ONE-NAS (60 islands)     & $+3.47$ & $+8.7$ & $+2.32$ & $+0.124$ \\
 ONE-NAS (40 islands)     & $+3.15$ & $+7.9$ & $+2.14$ & $+0.120$ \\
-ONE-NAS (8 islands)      & $+2.17$ & $+5.5$ & $+1.76$ & $+0.096$ \\
-Periodic LSTM (monthly)  & $+2.15$ & $+5.4$ & $+1.78$ & $+0.079$ \\
-Online LSTM              & $+2.08$ & $+5.2$ & $+1.59$ & $+0.130$ \\
-Online GRU               & $+1.52$ & $+3.8$ & $+1.35$ & $+0.119$ \\
+ONE-NAS (20 islands)     & $+2.87$ & $+7.2$ & $+2.04$ & $+0.108$ \\
+Periodic LSTM (monthly)  & $+2.27$ & $+5.7$ & $+1.89$ & $+0.083$ \\
+Online LSTM              & $+2.24$ & $+5.6$ & $+1.73$ & $+0.131$ \\
+Online GRU               & $+1.54$ & $+3.9$ & $+1.42$ & $+0.106$ \\
 Online AR                & $-1.35$ & $-3.4$ & $-1.05$ & $+0.007$ \\
 \bottomrule
 \end{tabular}
@@ -189,9 +200,10 @@ the Fama--French three factors plus momentum, 2020--2024, Newey--West lag
 \toprule
 Fleet & $N$ & $\rho$ & Member & Ensemble & Predicted \\
 \midrule
-8 isl., 2020--24  & 8  & 0.216 & $+0.0064$ & $+0.0110$ & $+0.0114$ \\
+20 isl., 2020--24 & 20 & 0.180 & $+0.0056$ & $+0.0117$ & $+0.0120$ \\
 40 isl., 2020--24 & 40 & 0.172 & $+0.0058$ & $+0.0128$ & $+0.0132$ \\
-8 isl., 2016--19  & 8  & 0.190 & $+0.0071$ & $+0.0132$ & $+0.0132$ \\
+60 isl., 2020--24 & 60 & 0.177 & $+0.0060$ & $+0.0131$ & $+0.0137$ \\
+\midrule
 40 isl., 2016--19 & 40 & 0.187 & $+0.0078$ & $+0.0166$ & $+0.0171$ \\
 \bottomrule
 \end{tabular}

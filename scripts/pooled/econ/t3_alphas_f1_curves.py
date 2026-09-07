@@ -40,8 +40,9 @@ W0, W1 = "2020-01-01", "2024-12-31"
 
 ARMS = {
     "onenas_40isl": [("probe_ISL40", "ensemble_stitched_predictions.csv")],
-    "onenas_8isl": [(d, "ensemble_stitched_predictions.csv")
-                    for d in ("onenas_c7e", "probe_s4547", "probe_s4851")],
+    "onenas_20isl": [("probe_ISL20", "ensemble_stitched_predictions.csv")],
+    "onenas_60isl": [("islands_sweep/islands_60",
+                      "ensemble_stitched_predictions.csv")],
     "online_lstm": [("results_econ/lstm", "predictions.csv")],
     "online_gru": [("results_econ/gru", "predictions.csv")],
     "periodic_lstm_monthly": [("results_econ/periodic_lstm_monthly",
@@ -172,25 +173,27 @@ def main():
     pd.DataFrame(yearly).T.to_csv("results_econ/yearly_by_arm.csv")
 
     # ---------------- F1: cumulative net curves over the full registered
-    # evaluation span (2020-2024), matching the window table.
-    series = build_series("2020-01-01", "2024-12-31")
+    # 2022-2024, matching the window table and this figure's caption.
+    series = build_series("2022-01-01", "2024-12-31")
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     plt.rcParams.update({"font.size": 10, "axes.spines.top": False,
                          "axes.spines.right": False})
-    COLORS = {"onenas_40isl": "#2a78d6", "onenas_8isl": "#4a3aa7",
+    COLORS = {"onenas_60isl": "#123f7a", "onenas_40isl": "#2a78d6",
+              "onenas_20isl": "#7fb2e8",
               "online_lstm": "#1baf7a", "ew_buy_hold": "#eb6834",
               "periodic_lstm_monthly": "#eda100"}
-    LABELS = {"onenas_40isl": "ONE-NAS (40 islands)",
-              "onenas_8isl": "ONE-NAS (8 islands)",
+    LABELS = {"onenas_60isl": "ONE-NAS (60 islands)",
+              "onenas_40isl": "ONE-NAS (40 islands)",
+              "onenas_20isl": "ONE-NAS (20 islands)",
               "online_lstm": "Online LSTM",
               "periodic_lstm_monthly": "Periodic LSTM (monthly)",
               "online_ar": "Online AR",
               "ew_buy_hold": "Equal-weight buy & hold (prior-paper convention)"}
     fig, ax = plt.subplots(figsize=(7.2, 4.2))
     ends = []
-    for arm in ("onenas_40isl", "onenas_8isl", "online_lstm",
+    for arm in ("onenas_60isl", "onenas_40isl", "onenas_20isl", "online_lstm",
                 "periodic_lstm_monthly", "ew_buy_hold"):
         s = series[arm]
         s.index = pd.to_datetime(s.index)
