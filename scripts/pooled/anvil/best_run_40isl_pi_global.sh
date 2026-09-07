@@ -31,7 +31,7 @@
 
 module load gcc/11.2.0 openmpi/4.0.6 libtiff/4.1.0
 
-ONENAS="$HOME/ONENAS"
+ONENAS="$HOME/code/ONENAS"
 DATA="/anvil/projects/x-cis251123/shared/panels_core7"
 
 # ---- settings ----
