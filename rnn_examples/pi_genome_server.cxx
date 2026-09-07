@@ -217,6 +217,7 @@ int main(int argc, char** argv) {
     if (save_genomes) {
         mkdir((output_directory + "/genomes").c_str(), 0755);
     }
+    Log::info("results: %s (appending), per-generation prediction files%s in %s\n", results_path.c_str(), save_genomes ? " and genomes/" : "", output_directory.c_str());
 
     int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     int one = 1;
@@ -395,6 +396,7 @@ int main(int argc, char** argv) {
             if (write_predictions && !gen_results.empty()) {
                 string base = output_directory + "/generation_" + std::to_string(g);
                 if (msg.mode == PI_MODE_ISLAND_BEST) {
+                    Log::info("generation %d: writing %s_island_best.csv and %s_ensemble.csv\n", g, base.c_str(), base.c_str());
                     ofstream out(base + "_island_best.csv");
                     out << "island,elite_rank,stock,row,predicted\n";
                     for (const GenomeResult& r : gen_results) {
@@ -405,6 +407,7 @@ int main(int argc, char** argv) {
                     }
                     write_global_format(base + "_ensemble.csv", "ensemble_predicted_", output_names, gen_results.back().predictions, test_outputs);
                 } else {
+                    Log::info("generation %d: writing %s_global_best.csv\n", g, base.c_str());
                     write_global_format(base + "_global_best.csv", "global_best_predicted_", output_names, gen_results[0].predictions, test_outputs);
                 }
             }
