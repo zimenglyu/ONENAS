@@ -277,24 +277,26 @@ made; it is a reason to run this test, not a result.
   selection.
 - Reported in full regardless of outcome.
 
-OUTCOME (2026-09-06, scored on arrival; width 50 at n=36 of 40 pending one
-re-queued run, widths 40 and 60 complete at n=40). NEITHER CANDIDATE
-CLEARS. The eval-span width advantage does not reproduce:
+OUTCOME (2026-09-06, all 100 runs complete, all three arms at n=40).
+NEITHER CANDIDATE CLEARS. The eval-span width advantage does not
+reproduce:
 
   islands   n   rank IC    net%   Sharpe   MDD%
        40  40   +0.0169   +36.2     1.21   10.4
-       50  36   +0.0169   +36.3     1.20   10.4
+       50  40   +0.0170   +36.4     1.21   10.4
        60  40   +0.0168   +35.7     1.19   10.8
 
-  paired vs 40:  50: dIC +0.0000 (t=+0.05), dNet -0.2 (t=-0.13),
-                     dSharpe -0.02 (t=-0.36)
+  paired vs 40:  50: dIC +0.0001 (t=+0.11), dNet +0.2 (t=+0.17),
+                     dSharpe -0.00 (t=-0.00)
                  60: dIC -0.0001 (t=-0.23), dNet -0.5 (t=-0.45),
                      dSharpe -0.03 (t=-0.66)
 
 These are not near-misses against the 2.4 gate; every delta is
 indistinguishable from zero, the largest |t| being 0.23. On the tuning
 span, 40 / 50 / 60 islands are the same configuration on both the
-registered IC objective and the economics.
+registered IC objective and the economics. Scored once at n=36 while the
+last run was still evolving and once at the full n=40; the verdict was
+identical, as the t of +0.05 at n=36 already implied.
 
 Disposition: NO ADOPTION. 40 islands stands as the headline and as the
 deployment width. The eval-span result that motivated this test -- 50 vs
@@ -303,10 +305,12 @@ specific noise surviving a max-of-6 selection, not a width effect. This is
 the bp20 pattern a second time: an eval-span look that does not transfer,
 caught by protocol-symmetric selection rather than by publication.
 
-The width-50 arm's n=36 does not qualify this. Its dIC t is +0.05; four
-further cells cannot move that to 2.4. The remaining cells will be scored
-for completeness when the re-queued run lands, and this entry amended if
-anything changes.
+Operational note: one width-50 run (set4, seed 49) was OOM-killed on rank
+0 and then sat until the 3h wall clock, so it surfaced as a TIMEOUT rather
+than an out-of-memory failure. Rank 0 holds every island's population, so
+it is the rank whose footprint grows with width. Re-queued with
+--exclusive it completed in 1h05. All 40 width-60 runs completed on the
+first attempt, so this looks transient rather than a width-50 property.
 
 Consequence for the paper: the plateau reading of the width curve is
 strengthened, not weakened. Above roughly 30 islands the mean is flat, and
