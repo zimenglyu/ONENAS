@@ -17,3 +17,6 @@ scripts/pooled/econ/onenas_c7e_elites/
 # stitch_islands.sbatch and rsync.  Only the scored summaries
 # (results_econ/islands_curve10*.csv) are tracked.
 scripts/pooled/econ/islands_sweep/
+
+# raw tuning-span stitched streams: regenerable via stitch_tune.sbatch
+scripts/pooled/econ/tune_sweep/
