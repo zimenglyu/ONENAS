@@ -60,7 +60,7 @@ case "$SET" in
   *) echo "unknown set $SET"; exit 1 ;;
 esac
 
-OUT="/anvil/scratch/x-jchang5/results_v2/best_40isl_pi_islands/${SET}_seed${SEED}"
+OUT="/anvil/scratch/x-zlyu2/results_v2/best_40isl_pi_islands/${SET}_seed${SEED}"
 mkdir -p "$OUT"
 FILES=$(ls "$DATA/${SET}_core7/"*.csv | grep -v panel_)
 
