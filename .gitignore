@@ -44,3 +44,6 @@ scripts/pooled/baselines/**/*.log
 scripts/pooled/diagnostic/**/*.json
 scripts/pooled/diagnostic/**/*.csv
 scripts/pooled/diagnostic/**/*.log
+
+# Manuscript: drafts, figures and notes live with the paper, not the codebase.
+paper/
