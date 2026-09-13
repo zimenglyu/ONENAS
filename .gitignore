@@ -27,3 +27,20 @@ panels_core7.zip
 
 # Pi results pulled off the device (data, never committed)
 pi_results/
+
+# Run artifacts under the campaign directories: predictions, per-run metrics and
+# logs. Hundreds of MB, and every one regenerates from the job scripts in the
+# same tree. The scripts themselves (.sh/.sbatch/.py) and notes (.md) stay
+# tracked. To keep one deliberately: git add -f <path>
+scripts/pooled/econ/**/*.json
+scripts/pooled/econ/**/*.csv
+scripts/pooled/econ/**/*.log
+scripts/pooled/controls/**/*.json
+scripts/pooled/controls/**/*.csv
+scripts/pooled/controls/**/*.log
+scripts/pooled/baselines/**/*.json
+scripts/pooled/baselines/**/*.csv
+scripts/pooled/baselines/**/*.log
+scripts/pooled/diagnostic/**/*.json
+scripts/pooled/diagnostic/**/*.csv
+scripts/pooled/diagnostic/**/*.log
