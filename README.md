@@ -1,10 +1,17 @@
+<p align="center">
+  <img src="images/nacre-lockup-horizontal-light-2400.png" alt="NACRE Lab" width="380">
+</p>
+
 # ONE-NAS: Online NeuroEvolution-based Neural Architecture Search
 
 ONE-NAS (Online NeuroEvolution-based Neural Architecture Search) is the first evolutionary algorithm capable of designing and training RNNs in real-time as data arrives in an online fashion. Unlike traditional time series forecasting methods that require offline pre-training, ONE-NAS continuously evolves both the structure and weights of Recurrent Neural Networks in response to streaming data. The algorithm utilizes island-based evolutionary strategies with repopulation techniques to maintain diversity and prevent catastrophic forgetting, while training new genomes on subsets of historical data to handle data drift effectively.
 
 Implemented in C++ and built on the same foundation as EXAMM, ONE-NAS is designed for distributed computation and offers excellent scalability from personal laptops to high-performance computing clusters. The system employs a distributed architecture where worker processes handle RNN training while a main process manages population evolution and orchestrates the overall evolutionary process. ONE-NAS has been evaluated on real-world datasets including wind turbine sensor data and financial time series, demonstrating superior performance compared to classical TSF methods, online LSTM/GRU networks, and online ARIMA approaches.
 
-![ONE-NAS Architecture](images/onenas.png)
+<p align="center">
+  <img src="images/onenet_repopulation.png" width="820"
+       alt="ONE-NAS architecture: workers train offspring in parallel while the main process evolves island elite populations through crossover and mutation, evaluates them with the fitness function, and selects a global best genome for online prediction.">
+</p>
 
 # Selected Publications
 
@@ -47,5 +54,12 @@ sh scripts/one-nas/coal_mpi.sh
 ```
 
 ---
-© 2025 All Rights Reserved.
+
+<p align="center">
+  <img src="images/nacre-mark-light-1024.png" alt="" width="44">
+</p>
+<p align="center">
+  Developed in the <strong>NACRE Lab</strong>.<br>
+  © 2025 All Rights Reserved.
+</p>
 
