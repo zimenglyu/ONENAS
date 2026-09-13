@@ -47,3 +47,20 @@ scripts/pooled/diagnostic/**/*.log
 
 # Manuscript: drafts, figures and notes live with the paper, not the codebase.
 paper/
+
+# Experiment trees and result-processing kept out of the codebase: the campaign
+# directories, the analysis notebooks and scripts that post-process runs, and
+# the working notes. The code, the Anvil job scripts, the Pi scripts and the
+# pipeline they call (prep_panel / score_ensemble / score_stream) stay tracked.
+scripts/pooled/econ/
+scripts/pooled/wwtp/
+scripts/pooled/baselines/
+scripts/pooled/controls/
+scripts/pooled/diagnostic/
+scripts/pooled/gen_dashboard.py
+scripts/pooled/score_ic.py
+scripts/pilot/
+HP_SCREEN.md
+PAPER_MAP.md
+PRIMARY.md
+PRIMARY_HOLDOUT.md
