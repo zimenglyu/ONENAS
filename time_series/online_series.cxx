@@ -118,7 +118,7 @@ void OnlineSeries::get_online_arguments(const vector<string> &arguments) {
     int32_t online_series_seed = 0;
     if (get_argument(arguments, "--online_series_seed", false, online_series_seed)) {
         Log::info("OnlineSeries sampling RNG seeded with --online_series_seed %d\n", online_series_seed);
-        sampling_rng.seed((uint32_t)online_series_seed);
+        sampling_rng.seed((uint32_t) online_series_seed);
     } else {
         std::random_device rd;
         uint32_t seed = rd();
@@ -150,7 +150,7 @@ void OnlineSeries::get_online_arguments(const vector<string> &arguments) {
 
         vector<string> training_filenames;
         get_argument_vector(arguments, "--training_filenames", true, training_filenames);
-        num_stocks = (int32_t)training_filenames.size();
+        num_stocks = (int32_t) training_filenames.size();
 
         if (sequence_length <= 0 || window_step <= 0) {
             Log::fatal(
@@ -179,8 +179,12 @@ int32_t OnlineSeries::newest_available_window() const {
     // Mirrors the training-pool cutoff in shuffle_data(): window w may be trained on iff
     // w <= current_index - window_lag. Clamped into the range of existing windows.
     int32_t newest = current_index - window_lag;
-    if (newest > num_windows - 1) newest = num_windows - 1;
-    if (newest < 0) newest = -1;
+    if (newest > num_windows - 1) {
+        newest = num_windows - 1;
+    }
+    if (newest < 0) {
+        newest = -1;
+    }
     return newest;
 }
 
@@ -190,17 +194,10 @@ void OnlineSeries::shuffle_data() {
     avalibale_training_index.clear();
 
     if (pooled_panel) {
-        // Training pool with end-row availability. The clock is the current window index
-        // cw = current_index; validation windows are cw .. cw+V-1 and the test window is cw+V.
-        // With stride s and length L, window w covers rows [w*s, w*s + L - 1]. A window may be
-        // trained on iff its LAST row strictly precedes the FIRST row of the earliest
-        // validation window:
-        //     w*s + L - 1 < cw*s   <=>   w <= cw - ceil(L/s)   (window_lag = ceil(L/s))
-        // With the default non-overlapping step (s = L) window_lag = 1, so the pool is
-        // {w < cw} - identical to the previous behavior. Using w < cw with s < L would leak
-        // rows shared between overlapping training and validation/test windows.
         int32_t available_windows = min(current_index - window_lag + 1, num_windows);
-        if (available_windows < 0) available_windows = 0;
+        if (available_windows < 0) {
+            available_windows = 0;
+        }
         for (int32_t s = 0; s < num_stocks; s++) {
             for (int32_t w = 0; w < available_windows; w++) {
                 avalibale_training_index.push_back(s * num_windows + w);
@@ -212,11 +209,11 @@ void OnlineSeries::shuffle_data() {
         }
     }
 
-    if ((int32_t)avalibale_training_index.size() < num_training_sets) {
+    if ((int32_t) avalibale_training_index.size() < num_training_sets) {
         Log::fatal(
             "Training pool has only %d episodes but --num_training_sets is %d; increase the burn-in "
             "(--num_training_windows / --num_training_sets) or reduce the requested training sets\n",
-            (int32_t)avalibale_training_index.size(), num_training_sets
+            (int32_t) avalibale_training_index.size(), num_training_sets
         );
         exit(1);
     }
@@ -241,9 +238,9 @@ void OnlineSeries::prioritized_experience_replay(vector<int32_t>& training_index
     // distance from the current window. In non-pooled mode this is the current generation.
     int32_t current_generation;
     if (pooled_panel) {
-        current_generation = current_index; // current window
+        current_generation = current_index;  // current window
     } else {
-        current_generation = current_index - num_training_sets; // Calculate current generation
+        current_generation = current_index - num_training_sets;  // Calculate current generation
     }
 
     // Calculate priorities for all available episodes
@@ -314,7 +311,9 @@ vector<int32_t> OnlineSeries::get_training_index(vector<int32_t>& training_index
         int32_t max_window = -1;
         for (int32_t episode_id : training_index) {
             int32_t w = episode_id % num_windows;
-            if (w > max_window) max_window = w;
+            if (w > max_window) {
+                max_window = w;
+            }
         }
         // Remember where the sampler actually read from so update_episode_priorities() can log
         // it next to the windows it writes priorities into (they must overlap).
@@ -417,28 +416,14 @@ void OnlineSeries::update_episode_priorities(const vector<RNN_Genome*>& elite_ge
     
     Log::info("PER: Elite genome statistics - Count: %d, Best MSE: %.6f, Avg MSE: %.6f, Worst MSE: %.6f\n",
              valid_genomes, best_mse, avg_mse, worst_mse);
-    
+
     if (pooled_panel) {
-        // Pooled panel priorities live on the WINDOW clock, the same clock the sampler uses.
-        //
-        // This used to index by current_generation, which is the wrong clock in two ways:
-        //   1. the live window is current_index = generation + num_training_windows (typically
-        //      several hundred windows ahead of the generation counter), so every priority write
-        //      landed num_training_windows windows behind anything prioritized_experience_replay()
-        //      could ever draw; and
-        //   2. the blend span used num_training_sets, which is an EPISODE count (episodes per
-        //      genome per generation), not a window count -- on an S-stock panel one window is S
-        //      episodes, so the span was off by roughly a factor of S as well.
-        // The net effect was that PER priorities were written into a window range disjoint from
-        // the sampled range, so PER degenerated to (approximately) uniform sampling on a panel.
-        //
-        // The newest window a training batch can contain is current_index - window_lag (see
-        // shuffle_data()), so that is where the freshest signal belongs; the blended update walks
-        // back over the previous per_blend_windows windows.
         int32_t newest_window = newest_available_window();
         if (newest_window < 0) {
-            Log::warning("PER: no training window is available yet (current window %d, lag %d), skipping priority update\n",
-                        current_index, window_lag);
+            Log::warning(
+                "PER: no training window is available yet (current window %d, lag %d), skipping priority update\n",
+                current_index, window_lag
+            );
             return;
         }
 
@@ -448,8 +433,9 @@ void OnlineSeries::update_episode_priorities(const vector<RNN_Genome*>& elite_ge
                 new_episode->set_validation_mse(best_mse);
             }
         }
-        Log::info("PER: Updated window %d across %d stocks with elite best MSE %.6f\n",
-                 newest_window, num_stocks, best_mse);
+        Log::info(
+            "PER: Updated window %d across %d stocks with elite best MSE %.6f\n", newest_window, num_stocks, best_mse
+        );
 
         int32_t window_start = std::max(0, newest_window - per_blend_windows);
         int32_t episodes_updated = 0;
@@ -465,8 +451,9 @@ void OnlineSeries::update_episode_priorities(const vector<RNN_Genome*>& elite_ge
             }
         }
         if (episodes_updated > 0) {
-            Log::info("PER: Updated %d training episodes with blended MSE (avg elite MSE: %.6f)\n",
-                     episodes_updated, avg_mse);
+            Log::info(
+                "PER: Updated %d training episodes with blended MSE (avg elite MSE: %.6f)\n", episodes_updated, avg_mse
+            );
         }
 
         // Verification line: the window range written here must overlap the window range the
@@ -474,8 +461,7 @@ void OnlineSeries::update_episode_priorities(const vector<RNN_Genome*>& elite_ge
         Log::info(
             "PER: pooled priority update touched windows [%d, %d] (generation %d, current window %d, "
             "blend span %d); sampler drew up to window %d\n",
-            window_start, newest_window, current_generation, current_index, per_blend_windows,
-            last_sampled_max_window
+            window_start, newest_window, current_generation, current_index, per_blend_windows, last_sampled_max_window
         );
         if (last_sampled_max_window >= 0 && last_sampled_max_window < window_start) {
             Log::warning(
@@ -566,7 +552,7 @@ void OnlineSeries::log_priority_statistics(int32_t current_generation) {
     double min_priority = 1e10;
     double max_priority = 0.0;
     int32_t available_episodes = 0;
-    
+
     // Calculate statistics for available episodes only. In pooled panel mode "available" means
     // sampleable by shuffle_data(), i.e. window <= current_index - window_lag; the decay clock is
     // the window clock, matching prioritized_experience_replay().
@@ -574,7 +560,7 @@ void OnlineSeries::log_priority_statistics(int32_t current_generation) {
     int32_t decay_reference = pooled_panel ? current_index_gen : current_generation;
     int32_t availability_cutoff = pooled_panel ? (newest_available_window() + 1) : current_index_gen;
 
-    for (int32_t i = 0; i < (int32_t)episodes.size(); i++) {
+    for (int32_t i = 0; i < (int32_t) episodes.size(); i++) {
         TimeSeriesEpisode* episode = episodes[i];
         if (episode != NULL && episode->get_availability_generation() < availability_cutoff) {
             int32_t episode_id = episode->get_episode_id();
@@ -591,7 +577,7 @@ void OnlineSeries::log_priority_statistics(int32_t current_generation) {
             }
         }
     }
-    
+
     if (available_episodes > 0) {
         double avg_priority = total_priority / available_episodes;
         Log::info("PER: Available episodes: %d, Avg priority: %.6f, Min: %.6f, Max: %.6f\n",
@@ -633,11 +619,7 @@ void OnlineSeries::write_priorities_to_csv(int32_t generation, const string& sta
     
     // Write generation number as first column
     csv_file << generation;
-    
-    // Decay reference: the window clock in pooled panel mode (episodes store their window index
-    // as availability_generation there), the generation counter otherwise. Using the generation
-    // counter on a panel made every dumped priority reflect a decay distance ~num_training_windows
-    // larger than the one the sampler actually applies.
+
     int32_t current_generation = pooled_panel ? current_index : generation;
 
     // Write MSE and priority for all episodes
@@ -697,17 +679,16 @@ void OnlineSeries::initialize_episodes(const vector<vector<vector<double>>>& inp
     }
 
     if (pooled_panel) {
-        Log::info("Initialized %d episodes (%d stocks x %d windows) with PER priority system\n", num_episodes, num_stocks, num_windows);
+        Log::info(
+            "Initialized %d episodes (%d stocks x %d windows) with PER priority system\n", num_episodes, num_stocks,
+            num_windows
+        );
     } else {
         Log::info("Initialized %d episodes with PER priority system\n", num_episodes);
     }
 }
 
 TimeSeriesEpisode* OnlineSeries::get_episode(int32_t episode_id) {
-    // Episodes are created in id order (initialize_episodes constructs episode i with id i),
-    // so the id is a direct index. The linear scan below is kept only as a defensive
-    // fallback: with a pooled panel the pool holds tens of thousands of episodes and PER
-    // looks up every one of them per genome, which made the scan dominate runtime.
     if (episode_id >= 0 && episode_id < (int32_t) episodes.size()) {
         TimeSeriesEpisode* episode = episodes[episode_id];
         if (episode != NULL && episode->get_episode_id() == episode_id) {
@@ -736,12 +717,6 @@ void OnlineSeries::print_episode_stats() {
 
 int32_t OnlineSeries::get_max_generation() {
     if (pooled_panel) {
-        // Time advances by WINDOW (step units): the last usable generation must leave room for
-        // num_validation_sets validation windows and one test window, i.e. the test window index
-        // cw + V = generation + num_training_windows + num_validation_sets must be a valid window.
-        // Because slicing only emits windows whose end row fits in the data
-        // (num_windows = floor((total_rows - L)/s) + 1), any window index < num_windows already
-        // satisfies the end-row condition (cw+V)*s + L <= total_rows, regardless of the step s.
         return num_windows - num_training_windows - num_validation_sets - num_test_sets;
     }
     int32_t max_generation = total_num_sets - num_training_sets - num_validation_sets - num_test_sets;

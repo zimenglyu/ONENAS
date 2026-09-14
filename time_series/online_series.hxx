@@ -17,9 +17,9 @@ using std::vector;
 using std::unordered_set;
 
 #include <random>
-using std::normal_distribution;
 using std::default_random_engine;
 using std::mt19937;
+using std::normal_distribution;
 
 #include "time_series_episode.hxx"
 
@@ -47,15 +47,16 @@ class OnlineSeries {
         bool pooled_panel;
         int32_t num_stocks;            // S: number of panel series (training files)
         int32_t num_windows;           // W: windows per stock
-        int32_t num_training_windows;  // initial burn-in pool, in windows (replaces num_training_sets' role in set_current_index)
-        int32_t window_step;           // s: row stride between consecutive windows (defaults to sequence_length -> non-overlapping)
-        int32_t window_lag;            // ceil(L/s): number of window indices a training window must trail the clock by
-                                       // so that its last row precedes the first row of the earliest validation window
+        int32_t num_training_windows;  // initial burn-in pool, in windows (replaces num_training_sets' role in
+                                       // set_current_index)
+        int32_t
+            window_step;  // s: row stride between consecutive windows (defaults to sequence_length -> non-overlapping)
+        int32_t window_lag;  // ceil(L/s): number of window indices a training window must trail the clock by
+                             // so that its last row precedes the first row of the earliest validation window
 
         // Persistent seeded RNG used for ALL sampling (uniform shuffle + PER's discrete_distribution).
         // Seeded once from --online_series_seed if given, otherwise from std::random_device.
         mt19937 sampling_rng;
-
 
         // PER parameters
         double per_alpha;    // prioritization strength [0, 1]
@@ -72,7 +73,7 @@ class OnlineSeries {
         // current_index - window_lag clamped into [0, num_windows). Pooled panel mode only.
         int32_t newest_available_window() const;
 
-    public:
+       public:
         OnlineSeries(int32_t _num_sets, const vector<string> &arguments);
         ~OnlineSeries();
 
@@ -94,9 +95,13 @@ class OnlineSeries {
         vector< int32_t > get_validation_index(vector<int32_t>& validation_index);
         int32_t get_test_index();
         void get_test_indices(vector<int32_t>& test_indices);
-        bool is_pooled_panel() const { return pooled_panel; }
-        int32_t get_num_stocks() const { return num_stocks; }
-        
+        bool is_pooled_panel() const {
+            return pooled_panel;
+        }
+        int32_t get_num_stocks() const {
+            return num_stocks;
+        }
+
         // PER priority system methods
         void update_episode_priorities(const vector<RNN_Genome*>& elite_genomes, int32_t current_generation);
         void write_priorities_to_csv(int32_t generation, const string& stats_directory);

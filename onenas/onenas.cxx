@@ -911,7 +911,6 @@ void ONENAS::initialize_seed_genome() {
     edge_innovation_count = seed_genome->get_max_edge_innovation_count() + 1;
     node_innovation_count = seed_genome->get_max_node_innovation_count() + 1;
 
-
     seed_genome->mark_unevaluated();
     seed_genome->best_parameters.clear();
 }

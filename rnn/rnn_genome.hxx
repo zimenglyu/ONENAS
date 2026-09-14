@@ -2,7 +2,6 @@
 #define RNN_BPTT_HXX
 
 #include <cmath>
-
 #include <fstream>
 using std::ifstream;
 using std::istream;
@@ -172,13 +171,9 @@ class RNN_Genome {
     void set_prediction_sd_rejected(bool rejected);
 
     /**
-     * Marks this genome as not yet evaluated: MSE/MAE go back to the EXAMM_MAX_DOUBLE sentinel and
-     * the inherited IC state is dropped, so get_fitness() reports "worst possible" under every
-     * selection metric until the genome is actually evaluated.
-     *
-     * Call this on freshly generated (mutated / crossed-over / seeded) genomes. Clearing the IC
-     * matters because copy() deliberately carries the EWMA -- without this a brand new, untrained
-     * child would inherit its parent's IC and could outrank trained genomes.
+     * Marks this genome as not yet evaluated: MSE/MAE return to the EXAMM_MAX_DOUBLE sentinel and
+     * the inherited IC state is dropped. Call this on freshly generated genomes, otherwise an
+     * untrained child inherits its parent's IC and can outrank trained genomes.
      */
     void mark_unevaluated();
 

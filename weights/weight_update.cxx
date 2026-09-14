@@ -18,16 +18,6 @@ WeightUpdate::WeightUpdate() {
     high_threshold = 1.0;
     low_threshold = 0.05;
     use_high_norm = true;
-    // Low-norm gradient AMPLIFICATION is opt-in (--low_norm_amplification) and defaults to OFF.
-    //
-    // norm_gradients() used to rescale any gradient whose L2 norm fell below low_threshold UP to
-    // exactly low_threshold. Combined with an adaptive optimizer (Adam/RMSProp/Adagrad, and Adam
-    // is the default here) this prevents convergence: those optimizers already normalize the step
-    // by a running estimate of the gradient magnitude, so forcing a constant floor on the norm
-    // makes every step approximately +/- learning_rate no matter how small the true gradient is.
-    // The weights then keep oscillating around the optimum instead of settling into it, and the
-    // shrinking-gradient signal that is supposed to end training is destroyed. Clipping LARGE
-    // gradients (use_high_norm) has no such problem and stays enabled by default.
     use_low_norm = false;
 }
 

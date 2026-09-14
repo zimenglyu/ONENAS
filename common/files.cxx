@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <cstring>
 #include <stdexcept>
 using std::runtime_error;
@@ -26,8 +27,6 @@ using std::string;
 #endif /* HAVE_UNISTD_H */
 
 typedef struct stat Stat;
-
-#include <cstdint>
 
 #include "files.hxx"
 

@@ -1,41 +1,3 @@
-// Runs on the Raspberry Pi. Listens on a TCP port for the per-generation
-// messages streamed by onenas_mpi (--send_to_pi) and evaluates each
-// generation's genome(s) on that generation's TEST WINDOW: the same window
-// whose predictions the master writes to generation_<g>_global_best.csv and
-// generation_<g>_elites.csv.
-//
-// The pi needs the same data as the master, sliced the same way. Give it the
-// same --training_filenames, --input_parameter_names, --output_parameter_names,
-// --time_offset, --time_series_length, --window_step, --pooled_panel and
-// --normalize flags as onenas_mpi: episode i on the pi is then identical to
-// episode i on the master, and every message names the episode ids of its
-// test window (one per stock in pooled panel mode). The pi checks that its
-// episode count matches the master's and refuses a generation otherwise.
-//
-// Modes (chosen on the master with --pi_mode):
-//   global_best: one genome per generation, the generation's global best.
-//                Writes generation_<g>_global_best.csv in the master's format.
-//   island_best: the best genome of every island. Each is scored on its own
-//                and their mean prediction is scored as the ensemble. Writes
-//                generation_<g>_island_best.csv (island,elite_rank,stock,row,
-//                predicted, like the master's elites file restricted to rank 0)
-//                and generation_<g>_ensemble.csv (master's global-best format).
-//
-// Each run (one --pi_mode and one --online_series_seed) gets its own directory,
-// <output_directory>/<mode>_seed<seed>/, so back-to-back runs never overwrite one
-// another and the pi does not have to be restarted between them. The idle
-// baseline is re-metered at the start of every run, while the pi is genuinely
-// idle waiting on the connection.
-//
-// Every genome gets a row in pi_evaluations.csv with MSE/MAE on the window,
-// the naive (previous value) MSE, inference time, throughput and, with
-// --ina219, INA219 power/energy during inference. One inference over the
-// window takes milliseconds, too short to meter, so the inference is repeated
-// until at least --min_measure_ms (default 100) have elapsed and the time and
-// energy are reported PER INFERENCE (total / repeats). The board's idle power
-// is metered for --idle_measure_ms (default 2000) at startup and reported as
-// idle_power_mw; energy_net_mj is the energy above idle. The ensemble row has
-// island = -1 and genome_id = -1.
 
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -44,8 +6,8 @@
 
 #include <chrono>
 #include <cmath>
-#include <thread>
 #include <fstream>
+#include <thread>
 using std::ofstream;
 
 #include <string>
@@ -86,7 +48,9 @@ double elapsed_ms(std::chrono::high_resolution_clock::time_point start) {
 
 // MSE / MAE / naive MSE over timesteps 1..T-1 of every series and output, exactly
 // as OneNasIslandSpeciationStrategy::calculate_prediction_performance scores the master's file
-void score(const Series3& predictions, const Series3& expected, double& mse, double& mae, double& naive_mse, int32_t& rows) {
+void score(
+    const Series3& predictions, const Series3& expected, double& mse, double& mae, double& naive_mse, int32_t& rows
+) {
     mse = mae = naive_mse = 0.0;
     rows = 0;
     for (int32_t n = 0; n < (int32_t) expected.size(); n++) {
@@ -109,24 +73,39 @@ void score(const Series3& predictions, const Series3& expected, double& mse, dou
 }
 
 // the master's generation_<g>_global_best.csv layout, with a configurable prediction column prefix
-void write_global_format(const string& filename, const string& prefix, const vector<string>& output_names, const Series3& predictions, const Series3& expected) {
+void write_global_format(
+    const string& filename, const string& prefix, const vector<string>& output_names, const Series3& predictions,
+    const Series3& expected
+) {
     ofstream out(filename);
     int32_t num_series = (int32_t) expected.size();
     int32_t num_outputs = (int32_t) output_names.size();
     out << "#";
     for (int32_t n = 0; n < num_series; n++) {
         string suffix = (num_series > 1) ? ("_s" + std::to_string(n)) : "";
-        for (int32_t i = 0; i < num_outputs; i++) out << (n > 0 || i > 0 ? "," : "") << "expected_" << output_names[i] << suffix;
-        for (int32_t i = 0; i < num_outputs; i++) out << ",naive_" << output_names[i] << suffix;
-        for (int32_t i = 0; i < num_outputs; i++) out << "," << prefix << output_names[i] << suffix;
+        for (int32_t i = 0; i < num_outputs; i++) {
+            out << (n > 0 || i > 0 ? "," : "") << "expected_" << output_names[i] << suffix;
+        }
+        for (int32_t i = 0; i < num_outputs; i++) {
+            out << ",naive_" << output_names[i] << suffix;
+        }
+        for (int32_t i = 0; i < num_outputs; i++) {
+            out << "," << prefix << output_names[i] << suffix;
+        }
     }
     out << "\n";
     int32_t time_length = (int32_t) expected[0][0].size();
     for (int32_t j = 1; j < time_length; j++) {
         for (int32_t n = 0; n < num_series; n++) {
-            for (int32_t i = 0; i < num_outputs; i++) out << (n > 0 || i > 0 ? "," : "") << expected[n][i][j];
-            for (int32_t i = 0; i < num_outputs; i++) out << "," << expected[n][i][j - 1];
-            for (int32_t i = 0; i < num_outputs; i++) out << "," << predictions[n][i][j];
+            for (int32_t i = 0; i < num_outputs; i++) {
+                out << (n > 0 || i > 0 ? "," : "") << expected[n][i][j];
+            }
+            for (int32_t i = 0; i < num_outputs; i++) {
+                out << "," << expected[n][i][j - 1];
+            }
+            for (int32_t i = 0; i < num_outputs; i++) {
+                out << "," << predictions[n][i][j];
+            }
         }
         out << "\n";
     }
@@ -135,9 +114,9 @@ void write_global_format(const string& filename, const string& prefix, const vec
 struct GenomeResult {
     int32_t island, genome_id, parameters;
     double mse, mae, naive_mse, build_ms;
-    double inference_ms;   // per inference over the window (measured_ms / repeats)
-    int32_t repeats;       // inferences run inside the measured window
-    double measured_ms;    // length of the metered window
+    double inference_ms;  // per inference over the window (measured_ms / repeats)
+    int32_t repeats;      // inferences run inside the measured window
+    double measured_ms;   // length of the metered window
     int32_t rows;
     INA219Stats power;     // over the metered window; energy_mj is per inference
     double energy_net_mj;  // per inference, above the idle baseline
@@ -173,21 +152,29 @@ int main(int argc, char** argv) {
     Series3 inputs, outputs;
     slice_online_time_series(arguments, time_series_sets, inputs, outputs);
     vector<string> output_names = time_series_sets->get_output_parameter_names();
-    Log::info("sliced %d episodes (%d inputs x %d timesteps each)\n", (int32_t) inputs.size(), (int32_t) inputs[0].size(), (int32_t) inputs[0][0].size());
+    Log::info(
+        "sliced %d episodes (%d inputs x %d timesteps each)\n", (int32_t) inputs.size(), (int32_t) inputs[0].size(),
+        (int32_t) inputs[0][0].size()
+    );
 
     INA219 ina219;
     INA219Sampler ina219_sampler;
     bool ina219_active = false;
-    double idle_power_mw = 0.0;   // re-metered at the start of every run
+    double idle_power_mw = 0.0;  // re-metered at the start of every run
     if (use_ina219) {
         if (ina219.open_device(ina219_device.c_str()) && ina219.configure()) {
             INA219Reading first;
             if (!ina219.read_reading(first)) {
-                Log::warning("INA219 found on %s but a reading failed, continuing without power monitoring\n", ina219_device.c_str());
+                Log::warning(
+                    "INA219 found on %s but a reading failed, continuing without power monitoring\n",
+                    ina219_device.c_str()
+                );
             } else {
                 ina219_active = true;
-                Log::info("INA219 power monitor enabled on %s: bus %.3f V, shunt %.3f mV, current %.1f mA, power %.1f mW\n",
-                    ina219_device.c_str(), first.bus_voltage_v, first.shunt_voltage_mv, first.current_ma, first.power_mw);
+                Log::info(
+                    "INA219 power monitor enabled on %s: bus %.3f V, shunt %.3f mV, current %.1f mA, power %.1f mW\n",
+                    ina219_device.c_str(), first.bus_voltage_v, first.shunt_voltage_mv, first.current_ma, first.power_mw
+                );
                 if (first.bus_voltage_v < 0.5) {
                     Log::warning("INA219 bus voltage is ~0 V: VIN- is not connected to the load, check the wiring\n");
                 }
@@ -196,15 +183,19 @@ int main(int argc, char** argv) {
                 }
             }
         } else {
-            Log::warning("INA219 requested but could not open %s, continuing without power monitoring\n", ina219_device.c_str());
+            Log::warning(
+                "INA219 requested but could not open %s, continuing without power monitoring\n", ina219_device.c_str()
+            );
         }
     }
 
     // per-run output state; a run is one (mode, seed) pair
     string run_key, results_directory;
     ofstream results;
-    Log::info("results will go to %s/<mode>_seed<seed>/ (pi_evaluations.csv, per-generation prediction files%s)\n",
-        output_directory.c_str(), save_genomes ? ", genomes/" : "");
+    Log::info(
+        "results will go to %s/<mode>_seed<seed>/ (pi_evaluations.csv, per-generation prediction files%s)\n",
+        output_directory.c_str(), save_genomes ? ", genomes/" : ""
+    );
 
     int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     int one = 1;
@@ -239,7 +230,11 @@ int main(int argc, char** argv) {
                 continue;
             }
             int32_t g = msg.generation;
-            Log::info("generation %d: %d genome(s), mode %s, seed %d, %d test episode(s)\n", g, (int32_t) msg.genome_bytes.size(), pi_mode_name(msg.mode).c_str(), msg.seed, (int32_t) msg.test_episode_ids.size());
+            Log::info(
+                "generation %d: %d genome(s), mode %s, seed %d, %d test episode(s)\n", g,
+                (int32_t) msg.genome_bytes.size(), pi_mode_name(msg.mode).c_str(), msg.seed,
+                (int32_t) msg.test_episode_ids.size()
+            );
 
             // a new (mode, seed) is a new run: its own directory, its own idle baseline
             string this_key = pi_mode_name(msg.mode) + "_seed" + std::to_string(msg.seed);
@@ -257,8 +252,11 @@ int main(int argc, char** argv) {
                 }
                 results.open(results_path, std::ios::app);
                 if (new_results) {
-                    results << "generation,mode,seed,island,genome_id,parameters,series,rows,mse,mae,naive_mse,build_ms,inference_ms,repeats,measured_ms,per_point_us,throughput_per_s,"
-                            << "ina219_samples,bus_voltage_v_avg,current_ma_avg,power_mw_avg,idle_power_mw,energy_mj,energy_net_mj,energy_per_point_mj" << std::endl;
+                    results << "generation,mode,seed,island,genome_id,parameters,series,rows,mse,mae,naive_mse,build_"
+                               "ms,inference_ms,repeats,measured_ms,per_point_us,throughput_per_s,"
+                            << "ina219_samples,bus_voltage_v_avg,current_ma_avg,power_mw_avg,idle_power_mw,energy_mj,"
+                               "energy_net_mj,energy_per_point_mj"
+                            << std::endl;
                 }
                 Log::info("=== run %s -> %s ===\n", run_key.c_str(), results_directory.c_str());
 
@@ -272,17 +270,27 @@ int main(int argc, char** argv) {
                     ina219_sampler.stop();
                     INA219Stats idle = ina219_sampler.get_stats(idle_start, idle_end);
                     idle_power_mw = idle.power_mw_avg;
-                    Log::info("idle baseline for %s over %d ms (%d readings, %.1f readings/s): %.3f V, %.1f mA, %.1f mW\n",
-                        run_key.c_str(), idle_measure_ms, idle.sample_count, idle.sample_count * 1000.0 / idle_measure_ms,
-                        idle.bus_voltage_v_avg, idle.current_ma_avg, idle_power_mw);
+                    Log::info(
+                        "idle baseline for %s over %d ms (%d readings, %.1f readings/s): %.3f V, %.1f mA, %.1f mW\n",
+                        run_key.c_str(), idle_measure_ms, idle.sample_count,
+                        idle.sample_count * 1000.0 / idle_measure_ms, idle.bus_voltage_v_avg, idle.current_ma_avg,
+                        idle_power_mw
+                    );
                     if (idle.sample_count < 10) {
-                        Log::warning("INA219 delivered only %d readings in %d ms: energy numbers will be coarse\n", idle.sample_count, idle_measure_ms);
+                        Log::warning(
+                            "INA219 delivered only %d readings in %d ms: energy numbers will be coarse\n",
+                            idle.sample_count, idle_measure_ms
+                        );
                     }
                 }
             }
 
             if (msg.num_episodes_total != (int32_t) inputs.size()) {
-                Log::error("generation %d: master has %d episodes but the pi sliced %d: the pi's data flags differ from the master's, skipping\n", g, msg.num_episodes_total, (int32_t) inputs.size());
+                Log::error(
+                    "generation %d: master has %d episodes but the pi sliced %d: the pi's data flags differ from the "
+                    "master's, skipping\n",
+                    g, msg.num_episodes_total, (int32_t) inputs.size()
+                );
                 continue;
             }
 
@@ -311,11 +319,16 @@ int main(int argc, char** argv) {
                 vector<double> parameters = genome->get_best_parameters();
                 r.parameters = (int32_t) parameters.size();
                 if (parameters.empty()) {
-                    Log::warning("generation %d: genome %d has no best parameters, using its initial weights\n", g, r.genome_id);
+                    Log::warning(
+                        "generation %d: genome %d has no best parameters, using its initial weights\n", g, r.genome_id
+                    );
                 }
 
                 if (save_genomes) {
-                    genome->write_to_file(results_directory + "/genomes/generation_" + std::to_string(g) + "_island_" + std::to_string(r.island) + "_genome_" + std::to_string(r.genome_id) + ".bin");
+                    genome->write_to_file(
+                        results_directory + "/genomes/generation_" + std::to_string(g) + "_island_"
+                        + std::to_string(r.island) + "_genome_" + std::to_string(r.genome_id) + ".bin"
+                    );
                 }
 
                 // build: deserialized genome -> runnable network with its weights
@@ -374,11 +387,17 @@ int main(int argc, char** argv) {
                 e.power = INA219Stats();
                 e.energy_net_mj = 0.0;
                 e.predictions = gen_results[0].predictions;
-                for (auto& series : e.predictions) for (auto& outv : series) for (double& v : outv) v = 0.0;
+                for (auto& series : e.predictions) {
+                    for (auto& outv : series) {
+                        for (double& v : outv) {
+                            v = 0.0;
+                        }
+                    }
+                }
                 for (const GenomeResult& r : gen_results) {
                     e.parameters += r.parameters;
                     e.build_ms += r.build_ms;
-                    e.inference_ms += r.inference_ms;   // the ensemble runs its members one after another
+                    e.inference_ms += r.inference_ms;  // the ensemble runs its members one after another
                     e.measured_ms += r.measured_ms;
                     e.repeats += r.repeats;
                     e.power.sample_count += r.power.sample_count;
@@ -387,10 +406,13 @@ int main(int argc, char** argv) {
                     e.power.bus_voltage_v_avg += r.power.bus_voltage_v_avg / gen_results.size();
                     e.power.current_ma_avg += r.power.current_ma_avg / gen_results.size();
                     e.power.power_mw_avg += r.power.power_mw_avg / gen_results.size();
-                    for (size_t n = 0; n < r.predictions.size(); n++)
-                        for (size_t i = 0; i < r.predictions[n].size(); i++)
-                            for (size_t j = 0; j < r.predictions[n][i].size(); j++)
+                    for (size_t n = 0; n < r.predictions.size(); n++) {
+                        for (size_t i = 0; i < r.predictions[n].size(); i++) {
+                            for (size_t j = 0; j < r.predictions[n][i].size(); j++) {
                                 e.predictions[n][i][j] += r.predictions[n][i][j] / gen_results.size();
+                            }
+                        }
+                    }
                 }
                 score(e.predictions, test_outputs, e.mse, e.mae, e.naive_mse, e.rows);
                 gen_results.push_back(e);
@@ -401,41 +423,70 @@ int main(int argc, char** argv) {
                 double per_point_us = r.rows > 0 ? r.inference_ms * 1000.0 / r.rows : 0.0;
                 double throughput = r.inference_ms > 0 ? r.rows / (r.inference_ms / 1000.0) : 0.0;
                 if (ensemble) {
-                    Log::info("generation %d ensemble of %d island bests: MSE %lf, MAE %lf (naive MSE %lf), inference %.2f ms total\n", g, (int32_t) gen_results.size() - 1, r.mse, r.mae, r.naive_mse, r.inference_ms);
+                    Log::info(
+                        "generation %d ensemble of %d island bests: MSE %lf, MAE %lf (naive MSE %lf), inference %.2f "
+                        "ms total\n",
+                        g, (int32_t) gen_results.size() - 1, r.mse, r.mae, r.naive_mse, r.inference_ms
+                    );
                 } else {
-                    Log::info("generation %d island %d genome %d (%d params): MSE %lf, MAE %lf (naive MSE %lf), build %.2f ms, inference %.3f ms (%d repeats in %.1f ms), %.2f us/point, %.0f points/s\n", g, r.island, r.genome_id, r.parameters, r.mse, r.mae, r.naive_mse, r.build_ms, r.inference_ms, r.repeats, r.measured_ms, per_point_us, throughput);
+                    Log::info(
+                        "generation %d island %d genome %d (%d params): MSE %lf, MAE %lf (naive MSE %lf), build %.2f "
+                        "ms, inference %.3f ms (%d repeats in %.1f ms), %.2f us/point, %.0f points/s\n",
+                        g, r.island, r.genome_id, r.parameters, r.mse, r.mae, r.naive_mse, r.build_ms, r.inference_ms,
+                        r.repeats, r.measured_ms, per_point_us, throughput
+                    );
                 }
                 if (ina219_active) {
                     if (r.power.sample_count > 0) {
-                        Log::info("  INA219 (%d readings): %.3f V, %.1f mA, %.1f mW (idle %.1f mW); per inference %.4f mJ, net %.4f mJ, %.6f mJ/point\n", r.power.sample_count, r.power.bus_voltage_v_avg, r.power.current_ma_avg, r.power.power_mw_avg, idle_power_mw, r.power.energy_mj, r.energy_net_mj, r.rows > 0 ? r.power.energy_mj / r.rows : 0.0);
+                        Log::info(
+                            "  INA219 (%d readings): %.3f V, %.1f mA, %.1f mW (idle %.1f mW); per inference %.4f mJ, "
+                            "net %.4f mJ, %.6f mJ/point\n",
+                            r.power.sample_count, r.power.bus_voltage_v_avg, r.power.current_ma_avg,
+                            r.power.power_mw_avg, idle_power_mw, r.power.energy_mj, r.energy_net_mj,
+                            r.rows > 0 ? r.power.energy_mj / r.rows : 0.0
+                        );
                     } else {
                         Log::warning("  INA219: no readings during the %.1f ms window\n", r.measured_ms);
                     }
                 }
-                results << g << "," << pi_mode_name(msg.mode) << "," << msg.seed << "," << r.island << "," << r.genome_id << "," << r.parameters << ","
-                        << test_inputs.size() << "," << r.rows << "," << r.mse << "," << r.mae << "," << r.naive_mse << ","
-                        << r.build_ms << "," << r.inference_ms << "," << r.repeats << "," << r.measured_ms << "," << per_point_us << "," << throughput << ","
-                        << r.power.sample_count << "," << r.power.bus_voltage_v_avg << "," << r.power.current_ma_avg << ","
-                        << r.power.power_mw_avg << "," << idle_power_mw << "," << r.power.energy_mj << "," << r.energy_net_mj << ","
-                        << (r.rows > 0 ? r.power.energy_mj / r.rows : 0.0) << std::endl;
+                results << g << "," << pi_mode_name(msg.mode) << "," << msg.seed << "," << r.island << ","
+                        << r.genome_id << "," << r.parameters << "," << test_inputs.size() << "," << r.rows << ","
+                        << r.mse << "," << r.mae << "," << r.naive_mse << "," << r.build_ms << "," << r.inference_ms
+                        << "," << r.repeats << "," << r.measured_ms << "," << per_point_us << "," << throughput << ","
+                        << r.power.sample_count << "," << r.power.bus_voltage_v_avg << "," << r.power.current_ma_avg
+                        << "," << r.power.power_mw_avg << "," << idle_power_mw << "," << r.power.energy_mj << ","
+                        << r.energy_net_mj << "," << (r.rows > 0 ? r.power.energy_mj / r.rows : 0.0) << std::endl;
             }
 
             if (write_predictions && !gen_results.empty()) {
                 string base = results_directory + "/generation_" + std::to_string(g);
                 if (msg.mode == PI_MODE_ISLAND_BEST) {
-                    Log::info("generation %d: writing %s_island_best.csv and %s_ensemble.csv\n", g, base.c_str(), base.c_str());
+                    Log::info(
+                        "generation %d: writing %s_island_best.csv and %s_ensemble.csv\n", g, base.c_str(), base.c_str()
+                    );
                     ofstream out(base + "_island_best.csv");
                     out << "island,elite_rank,stock,row,predicted\n";
                     for (const GenomeResult& r : gen_results) {
-                        if (r.island < 0) continue;
-                        for (int32_t n = 0; n < (int32_t) r.predictions.size(); n++)
-                            for (int32_t j = 1; j < (int32_t) r.predictions[n][0].size(); j++)
-                                out << r.island << ",0," << n << "," << (j - 1) << "," << r.predictions[n][0][j] << "\n";
+                        if (r.island < 0) {
+                            continue;
+                        }
+                        for (int32_t n = 0; n < (int32_t) r.predictions.size(); n++) {
+                            for (int32_t j = 1; j < (int32_t) r.predictions[n][0].size(); j++) {
+                                out << r.island << ",0," << n << "," << (j - 1) << "," << r.predictions[n][0][j]
+                                    << "\n";
+                            }
+                        }
                     }
-                    write_global_format(base + "_ensemble.csv", "ensemble_predicted_", output_names, gen_results.back().predictions, test_outputs);
+                    write_global_format(
+                        base + "_ensemble.csv", "ensemble_predicted_", output_names, gen_results.back().predictions,
+                        test_outputs
+                    );
                 } else {
                     Log::info("generation %d: writing %s_global_best.csv\n", g, base.c_str());
-                    write_global_format(base + "_global_best.csv", "global_best_predicted_", output_names, gen_results[0].predictions, test_outputs);
+                    write_global_format(
+                        base + "_global_best.csv", "global_best_predicted_", output_names, gen_results[0].predictions,
+                        test_outputs
+                    );
                 }
             }
         }

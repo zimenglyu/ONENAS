@@ -180,10 +180,9 @@ OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_
     bool repeat_extinction = argument_exists(arguments, "--repeat_extinction");
 
     OneNasIslandSpeciationStrategy* island_strategy = new OneNasIslandSpeciationStrategy(
-        number_islands, generated_population_size, elite_population_size, mutation_rate, intra_island_co_rate
-        ,
-        inter_island_co_rate, seed_genome, island_ranking_method, repopulation_method,
-        repopulation_frequency, num_mutations, repopulation_mutations, islands_to_exterminate, repeat_extinction, output_directory,
+        number_islands, generated_population_size, elite_population_size, mutation_rate, intra_island_co_rate,
+        inter_island_co_rate, seed_genome, island_ranking_method, repopulation_method, repopulation_frequency,
+        num_mutations, repopulation_mutations, islands_to_exterminate, repeat_extinction, output_directory,
         control_size_method, compare_with_naive, write_elite_predictions
     );
 
@@ -338,8 +337,7 @@ void slice_online_time_series(
             );
         }
         Log::info(
-            "Slicing input training data with time sequence length: %d, window step: %d\n", sequence_length,
-            window_step
+            "Slicing input training data with time sequence length: %d, window step: %d\n", sequence_length, window_step
         );
         slice_input_data(inputs, outputs, sequence_length, window_step);
     }

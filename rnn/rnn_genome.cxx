@@ -178,8 +178,6 @@ RNN_Genome* RNN_Genome::copy() {
 
     other->log_filename = log_filename;
 
-
-
     other->initial_parameters = initial_parameters;
 
     other->best_validation_mse = best_validation_mse;
@@ -346,9 +344,6 @@ int32_t RNN_Genome::get_node_count(int32_t node_type) {
 
     return count;
 }
-
-
-
 
 vector<string> RNN_Genome::get_input_parameter_names() const {
     return input_parameter_names;
@@ -881,10 +876,6 @@ void RNN_Genome::set_generation_id(int32_t _generation_id) {
     generation_id = _generation_id;
 }
 
-// Ineligible genomes must sort after every eligible one without becoming inf/NaN (ONENAS discards
-// non-finite fitness outright, and Population::insert_genome compares fitness numerically). A
-// finite offset larger than any plausible MSE or IC keeps the relative order inside the penalized
-// group intact, so "worst" still means "least bad of the bad".
 #define SELECTION_GATE_PENALTY 1000.0
 // Strictly worse than the gate penalty: an exploding genome is a harder reject than a merely
 // high-MSE one, but it stays finite so that a population made entirely of rejects still has a
@@ -892,13 +883,6 @@ void RNN_Genome::set_generation_id(int32_t _generation_id) {
 #define SELECTION_UNFIT_PENALTY 1000000.0
 
 double RNN_Genome::get_fitness() const {
-    // Lower is better in every mode.
-    //
-    // MSE mode is the historical path and returns exactly best_validation_mse, so runs without
-    // --selection_metric behave as before. IC modes return the NEGATED EWMA of the cross-sectional
-    // rank IC: an IC of +0.05 is better than +0.01, and negating keeps the "smaller is better"
-    // convention every comparator in the codebase relies on. A genome that has never produced an
-    // IC observation is unranked, not best, so it gets the worst possible fitness.
     double base;
     if (SelectionConfig::uses_ic()) {
         base = ic_ewma_initialized ? -ic_ewma : EXAMM_MAX_DOUBLE;
@@ -906,10 +890,16 @@ double RNN_Genome::get_fitness() const {
         base = best_validation_mse;
     }
 
-    if (std::isnan(base) || base >= EXAMM_MAX_DOUBLE) return base;
+    if (std::isnan(base) || base >= EXAMM_MAX_DOUBLE) {
+        return base;
+    }
 
-    if (prediction_sd_rejected) base += SELECTION_UNFIT_PENALTY;
-    if (selection_gated) base += SELECTION_GATE_PENALTY;
+    if (prediction_sd_rejected) {
+        base += SELECTION_UNFIT_PENALTY;
+    }
+    if (selection_gated) {
+        base += SELECTION_GATE_PENALTY;
+    }
 
     return base;
 }
@@ -928,7 +918,9 @@ bool RNN_Genome::has_ic() const {
 
 void RNN_Genome::update_ic_ewma(double ic) {
     validation_ic = ic;
-    if (std::isnan(ic)) return;
+    if (std::isnan(ic)) {
+        return;
+    }
 
     if (!ic_ewma_initialized) {
         ic_ewma = ic;
@@ -977,8 +969,6 @@ double RNN_Genome::get_best_validation_mse() const {
 double RNN_Genome::get_best_validation_mae() const {
     return best_validation_mae;
 }
-
-
 
 bool RNN_Genome::sanity_check() {
     return true;
@@ -1445,25 +1435,25 @@ void RNN_Genome::write_predictions(
 // }
 
 void RNN_Genome::evaluate_online(const vector< vector< vector<double> > > &inputs, const vector< vector< vector<double> > > &output) {
-
     const vector<double>& parameters = best_parameters.size() > 0 ? best_parameters : initial_parameters;
 
     // MSE is computed and recorded in every mode, whatever the selection metric is.
     best_validation_mse = get_mse(parameters, inputs, output);
 
-    if (!SelectionConfig::needs_predictions()) return;
+    if (!SelectionConfig::needs_predictions()) {
+        return;
+    }
 
     // A second pass is needed because get_mse() only returns the aggregate error; the IC needs the
     // individual predictions so they can be ranked across the panel at each timestep, and the
     // exploding-prediction guard needs their spread.
-    vector< vector< vector<double> > > predictions = get_predictions(parameters, inputs, output);
+    vector<vector<vector<double> > > predictions = get_predictions(parameters, inputs, output);
 
     if (SelectionConfig::guards_prediction_sd()) {
         last_pred_sd_ratio = prediction_sd_ratio(predictions, output);
         // NAN means the targets had no spread, so there is no scale to judge against: leave the
         // genome alone rather than rejecting on a meaningless comparison.
-        bool reject = !std::isnan(last_pred_sd_ratio)
-                      && last_pred_sd_ratio > SelectionConfig::get_max_pred_sd_ratio();
+        bool reject = !std::isnan(last_pred_sd_ratio) && last_pred_sd_ratio > SelectionConfig::get_max_pred_sd_ratio();
         if (reject && !prediction_sd_rejected) {
             Log::info(
                 "Genome %d rejected by the exploding-prediction guard: prediction SD is %.3fx the "
@@ -1476,7 +1466,9 @@ void RNN_Genome::evaluate_online(const vector< vector< vector<double> > > &input
         prediction_sd_rejected = reject;
     }
 
-    if (!SelectionConfig::ic_available()) return;
+    if (!SelectionConfig::ic_available()) {
+        return;
+    }
 
     int32_t num_cross_sections = 0;
     double ic = cross_sectional_rank_ic(predictions, output, SelectionConfig::get_num_stocks(), num_cross_sections);
@@ -2298,7 +2290,6 @@ bool RNN_Genome::connect_new_input_node(
 
     output_sigma /= (enabled_count - 1);
     output_sigma = sqrt(output_sigma);
-
 
     int32_t max_outputs = fmax(1, 2.0 + normal_distribution.random(generator, avg_outputs, output_sigma));
     while (possible_outputs.size() > max_outputs) {
@@ -3525,8 +3516,6 @@ void RNN_Genome::read_from_stream(istream& bin_istream) {
     // istringstream rng_0_1_iss(rng_0_1_str);
     // rng_0_1_iss >> rng_0_1;
 
-
-
     bin_istream.read((char*) &best_validation_mse, sizeof(double));
     bin_istream.read((char*) &best_validation_mae, sizeof(double));
 
@@ -3667,10 +3656,6 @@ void RNN_Genome::read_from_stream(istream& bin_istream) {
         bin_istream.read((char*) &training_indices[i], sizeof(int32_t));
     }
 
-    // Cross-sectional IC selection state. Appended last and read only if the stream still has
-    // bytes, so genome .bin files written before this field existed still load (they simply keep
-    // the "no IC observed yet" defaults). A genome trained on an MPI worker computes its IC there,
-    // and this is how the value reaches the master that ranks it.
     if (bin_istream.good() && bin_istream.peek() != EOF) {
         bin_istream.read((char*) &validation_ic, sizeof(double));
         bin_istream.read((char*) &ic_ewma, sizeof(double));
@@ -3738,8 +3723,6 @@ void RNN_Genome::write_to_stream(ostream& bin_ostream) {
     rng_0_1_oss << rng_0_1;
     string rng_0_1_str = rng_0_1_oss.str();
     write_binary_string(bin_ostream, rng_0_1_str, "rng_0_1");
-
-
 
     bin_ostream.write((char*) &best_validation_mse, sizeof(double));
     bin_ostream.write((char*) &best_validation_mae, sizeof(double));

@@ -21,17 +21,17 @@ using std::thread;
 #include <vector>
 using std::vector;
 
-#include "common/log.hxx"
-#include "common/process_arguments.hxx"
 #include "common/files.hxx"
+#include "common/log.hxx"
+#include "common/pi_protocol.hxx"
+#include "common/process_arguments.hxx"
+#include "mpi.h"
+#include "mpi/pi_sender.hxx"
 #include "onenas/onenas.hxx"
 #include "onenas/onenas_island_speciation_strategy.hxx"
-#include "mpi.h"
-#include "common/pi_protocol.hxx"
-#include "mpi/pi_sender.hxx"
 #include "rnn/generate_nn.hxx"
-#include "time_series/time_series.hxx"
 #include "time_series/online_series.hxx"
+#include "time_series/time_series.hxx"
 #include "weights/weight_rules.hxx"
 #include "weights/weight_update.hxx"
 
@@ -158,7 +158,9 @@ void write_training_indices_to_csv(int32_t genome_id, int32_t generation, const 
 /**
  * Write validation and test indices for a generation to CSV
  */
-void write_validation_test_indices_to_csv(int32_t generation, const vector<int32_t>& validation_indices, const vector<int32_t>& test_indices) {
+void write_validation_test_indices_to_csv(
+    int32_t generation, const vector<int32_t>& validation_indices, const vector<int32_t>& test_indices
+) {
     if (!validation_test_indices_csv.is_open()) {
         Log::error("Validation/test indices CSV file is not open\n");
         return;
@@ -171,7 +173,9 @@ void write_validation_test_indices_to_csv(int32_t generation, const vector<int32
     }
     validation_test_indices_csv << "\",";
     for (size_t i = 0; i < test_indices.size(); i++) {
-        if (i > 0) validation_test_indices_csv << ";";
+        if (i > 0) {
+            validation_test_indices_csv << ";";
+        }
         validation_test_indices_csv << test_indices[i];
     }
     validation_test_indices_csv << "\n";
@@ -297,17 +301,14 @@ void populate_current_time_series_data(
 }
 
 void populate_test_and_validation_data(
-    OnlineSeries* online_series,
-    const vector<int32_t>& test_indices,
-    const vector<int32_t>& validation_index,
-    vector<vector<vector<double>>>& current_test_inputs,
-    vector<vector<vector<double>>>& current_test_outputs,
+    OnlineSeries* online_series, const vector<int32_t>& test_indices, const vector<int32_t>& validation_index,
+    vector<vector<vector<double>>>& current_test_inputs, vector<vector<vector<double>>>& current_test_outputs,
     vector<vector<vector<double>>>& current_validation_inputs,
     vector<vector<vector<double>>>& current_validation_outputs
 ) {
     // test_indices contains episode IDs - a single episode in the default mode, or one
     // episode per stock (all at the same window) in pooled panel mode
-    for (int32_t i = 0; i < (int32_t)test_indices.size(); i++) {
+    for (int32_t i = 0; i < (int32_t) test_indices.size(); i++) {
         TimeSeriesEpisode* test_episode = online_series->get_episode(test_indices[i]);
         if (test_episode != nullptr) {
             current_test_inputs.push_back(test_episode->get_inputs());
@@ -331,19 +332,15 @@ void populate_test_and_validation_data(
             exit(1);
         }
     }
-    Log::info("Current testing episode ID(s): %d test episodes, first ID %d\n", (int32_t)test_indices.size(), test_indices.empty() ? -1 : test_indices[0]);
+    Log::info(
+        "Current testing episode ID(s): %d test episodes, first ID %d\n", (int32_t) test_indices.size(),
+        test_indices.empty() ? -1 : test_indices[0]
+    );
 }
 
-// optional: only created when --send_to_pi is given. --pi_host/--pi_port
-// override these defaults from the command line. Once per generation, after
-// finalization, the generation's genomes are streamed to the pi together with
-// the episode ids of that generation's test window (see common/pi_protocol.hxx):
-//   --pi_mode global_best (default): the generation's global best genome
-//   --pi_mode island_best:           the best genome of every island (the pi
-//                                    scores each one and their ensemble)
 const string DEFAULT_PI_HOST = "192.168.0.70";
 const int32_t DEFAULT_PI_PORT = 5555;
-PiSender* pi_sender = NULL;
+PiSender* pi_sender = nullptr;
 int32_t pi_mode = PI_MODE_GLOBAL_BEST;
 int32_t pi_num_episodes = 0;
 int32_t pi_seed = -1;
@@ -392,8 +389,8 @@ void send_generation_to_pi(
     pi_sender->enqueue(bytes.data(), (int32_t) bytes.size());
     Log::info(
         "queued generation %d for the pi: %d genome(s), mode %s, seed %d, %d test episode(s) starting at %d\n",
-        current_generation, (int32_t) genomes.size(), pi_mode_name(pi_mode).c_str(), pi_seed, (int32_t) test_indices.size(),
-        test_indices.empty() ? -1 : test_indices[0]
+        current_generation, (int32_t) genomes.size(), pi_mode_name(pi_mode).c_str(), pi_seed,
+        (int32_t) test_indices.size(), test_indices.empty() ? -1 : test_indices[0]
     );
 }
 
@@ -684,7 +681,6 @@ int main(int argc, char** argv) {
     }
     Log::info("Total generation is set to: %d\n", total_generation);
 
-    
     // Initialize episode management system
     Log::info("Initializing episode management system\n");
     online_series->initialize_episodes(time_series_inputs, time_series_outputs);
@@ -737,7 +733,10 @@ int main(int argc, char** argv) {
             pi_num_episodes = num_sets;
             get_argument(arguments, "--online_series_seed", false, pi_seed);
             pi_sender = new PiSender(pi_host, pi_port);
-            Log::info("streaming each generation's %s genome(s) to the pi at %s:%d (seed %d)\n", pi_mode_string.c_str(), pi_host.c_str(), pi_port, pi_seed);
+            Log::info(
+                "streaming each generation's %s genome(s) to the pi at %s:%d (seed %d)\n", pi_mode_string.c_str(),
+                pi_host.c_str(), pi_port, pi_seed
+            );
         }
     }
 
@@ -746,14 +745,12 @@ int main(int argc, char** argv) {
         // genome-generation rounds are run within the tick.
         online_series->set_current_index(current_generation);
 
-        // Run R rounds of generate+train+insert per data tick. Each round is a full
-        // master/worker exchange (the master terminates the workers at the end of a round, so
-        // both sides re-enter their loops for the next round). Validation/test indices and
-        // elite finalization happen ONCE per tick, after all R rounds.
         for (int32_t round = 0; round < rounds_per_generation; round++) {
-            if (rank ==0) {
+            if (rank == 0) {
                 Log::major_divider(Log::INFO, "New generation");
-                Log::info("Current generation: %d (round %d of %d)\n", current_generation, round + 1, rounds_per_generation);
+                Log::info(
+                    "Current generation: %d (round %d of %d)\n", current_generation, round + 1, rounds_per_generation
+                );
 
                 // Track memory usage at start of generation
                 Log::log_memory_usage("Generation " + std::to_string(current_generation) + " start");
@@ -781,8 +778,7 @@ int main(int argc, char** argv) {
 
             // Populate test and validation data from episodes
             populate_test_and_validation_data(
-                online_series, test_indices, validation_index,
-                current_test_inputs, current_test_outputs,
+                online_series, test_indices, validation_index, current_test_inputs, current_test_outputs,
                 current_validation_inputs, current_validation_outputs
             );
 
@@ -804,11 +800,7 @@ int main(int argc, char** argv) {
             if (online_series->get_training_method().compare("PER") == 0) {
                 Log::info("Training method is PER - updating episode priorities with elite genomes\n");
                 online_series->update_episode_priorities(elite_genomes, current_generation);
-                
-                // Write priority statistics to CSV (PER method only). This dump is one row
-                // per episode, so on a pooled panel it is several MB per generation; write it
-                // periodically rather than every generation to keep the diagnostic without
-                // saturating shared-filesystem I/O.
+
                 if (current_generation % 25 == 0) {
                     online_series->write_priorities_to_csv(current_generation, get_stats_directory());
                 }
@@ -828,10 +820,10 @@ int main(int argc, char** argv) {
             
             onenas->update_log();
 
-            if (pi_sender != NULL) {
+            if (pi_sender != nullptr) {
                 send_generation_to_pi(current_generation, onenas_strategy, test_indices);
             }
-            
+
             // Track memory usage at end of generation
             Log::log_memory_usage("Generation " + std::to_string(current_generation) + " end");
             
@@ -846,9 +838,9 @@ int main(int argc, char** argv) {
         
         // Clean up memory on master process
         Log::log_memory_usage("Before cleanup");
-        if (pi_sender != NULL) {
+        if (pi_sender != nullptr) {
             delete pi_sender;  // waits for the queue to drain
-            pi_sender = NULL;
+            pi_sender = nullptr;
         }
         delete onenas;
         delete online_series;

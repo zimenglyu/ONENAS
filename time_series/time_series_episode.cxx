@@ -10,11 +10,25 @@ using std::ofstream;
 using std::ifstream;
 
 TimeSeriesEpisode::TimeSeriesEpisode(int32_t id)
-    : episode_id(id), validation_mse(1.0), availability_generation(0), window_index(id), stock_index(0), is_loaded(false) {
+    : episode_id(id),
+      validation_mse(1.0),
+      availability_generation(0),
+      window_index(id),
+      stock_index(0),
+      is_loaded(false) {
 }
 
-TimeSeriesEpisode::TimeSeriesEpisode(int32_t id, const vector<vector<double>>& _inputs, const vector<vector<double>>& _outputs)
-    : episode_id(id), inputs(_inputs), outputs(_outputs), validation_mse(1.0), availability_generation(0), window_index(id), stock_index(0), is_loaded(true) {
+TimeSeriesEpisode::TimeSeriesEpisode(
+    int32_t id, const vector<vector<double>>& _inputs, const vector<vector<double>>& _outputs
+)
+    : episode_id(id),
+      inputs(_inputs),
+      outputs(_outputs),
+      validation_mse(1.0),
+      availability_generation(0),
+      window_index(id),
+      stock_index(0),
+      is_loaded(true) {
 }
 
 TimeSeriesEpisode::~TimeSeriesEpisode() {

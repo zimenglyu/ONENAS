@@ -115,7 +115,6 @@ void Population::copy_two_random_genomes(uniform_real_distribution<double> &rng_
     *genome2 = genomes[p2]->copy();
 }
 
-
 //returns -1 for not inserted, otherwise the index it was inserted at
 //inserts a copy of the genome, caller of the function will need to delete their
 //pointer
@@ -244,15 +243,6 @@ int32_t Population::insert_genome(RNN_Genome *genome) {
 
         Log::debug("new best fitness for island: %d!\n", population_type);
 
-        //need to set the weights for non-initial genomes so we
-        //can generate a proper graphviz file.
-        //
-        //This used to be guarded by `get_fitness() != EXAMM_MAX_DOUBLE`, using the fitness
-        //sentinel as a proxy for "this genome has trained weights". That proxy only holds while
-        //fitness IS the validation MSE -- under --selection_metric ic the fitness is derived from
-        //the IC instead, so a freshly generated genome could pass the guard with an empty
-        //best_parameters vector and take down the whole run inside set_weights(). Test the thing
-        //we actually depend on instead: that best_parameters matches this genome's weight count.
         vector<double> best_parameters = genome->get_best_parameters();
         if ((int32_t) best_parameters.size() == genome->get_number_weights()) {
             genome->set_weights(best_parameters);

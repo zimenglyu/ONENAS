@@ -22,7 +22,7 @@ bool SelectionConfig::pooled_panel = false;
 int32_t SelectionConfig::num_stocks = 1;
 int32_t SelectionConfig::ic_ewma_halflife = 8;
 double SelectionConfig::ic_gate_factor = 1.5;
-double SelectionConfig::max_pred_sd_ratio = 3.0;
+double SelectionConfig::max_pred_sd_ratio = 0.0;
 
 void SelectionConfig::initialize_from_arguments(
     const vector<string>& arguments, bool _pooled_panel, int32_t _num_stocks
@@ -40,9 +40,7 @@ void SelectionConfig::initialize_from_arguments(
     } else if (metric_string.compare("ic_gated") == 0) {
         metric = SELECTION_IC_GATED;
     } else {
-        Log::fatal(
-            "--selection_metric must be one of 'mse', 'ic' or 'ic_gated', got '%s'\n", metric_string.c_str()
-        );
+        Log::fatal("--selection_metric must be one of 'mse', 'ic' or 'ic_gated', got '%s'\n", metric_string.c_str());
         exit(1);
     }
 
@@ -76,8 +74,7 @@ void SelectionConfig::initialize_from_arguments(
     get_argument(arguments, "--ic_gate_factor", false, ic_gate_factor);
     if (ic_gate_factor < 1.0) {
         Log::fatal(
-            "--ic_gate_factor must be >= 1.0 (it is a multiple of the best MSE in the island), got %f\n",
-            ic_gate_factor
+            "--ic_gate_factor must be >= 1.0 (it is a multiple of the best MSE in the island), got %f\n", ic_gate_factor
         );
         exit(1);
     }
@@ -101,9 +98,7 @@ void SelectionConfig::initialize_from_arguments(
             num_stocks, ic_ewma_halflife, get_ic_ewma_alpha()
         );
     } else if (pooled_panel) {
-        Log::info(
-            "Pooled panel has only %d series, too narrow for a cross-sectional IC; MSE only\n", num_stocks
-        );
+        Log::info("Pooled panel has only %d series, too narrow for a cross-sectional IC; MSE only\n", num_stocks);
     }
     if (gates_by_mse()) {
         Log::info(
@@ -121,9 +116,12 @@ double SelectionConfig::get_ic_ewma_alpha() {
 
 string SelectionConfig::get_metric_name() {
     switch (metric) {
-        case SELECTION_IC: return "ic (EWMA of mean daily cross-sectional Spearman rank IC)";
-        case SELECTION_IC_GATED: return "ic_gated (IC, restricted to genomes near the island's best MSE)";
-        default: return "mse (validation mean squared error)";
+        case SELECTION_IC:
+            return "ic (EWMA of mean daily cross-sectional Spearman rank IC)";
+        case SELECTION_IC_GATED:
+            return "ic_gated (IC, restricted to genomes near the island's best MSE)";
+        default:
+            return "mse (validation mean squared error)";
     }
 }
 
@@ -131,24 +129,32 @@ string SelectionConfig::get_metric_name() {
 static void rank_with_ties(const vector<double>& values, vector<double>& ranks) {
     int32_t n = (int32_t) values.size();
     vector<int32_t> order(n);
-    for (int32_t i = 0; i < n; i++) order[i] = i;
+    for (int32_t i = 0; i < n; i++) {
+        order[i] = i;
+    }
     sort(order.begin(), order.end(), [&values](int32_t a, int32_t b) { return values[a] < values[b]; });
 
     ranks.assign(n, 0.0);
     int32_t i = 0;
     while (i < n) {
         int32_t j = i;
-        while (j + 1 < n && values[order[j + 1]] == values[order[i]]) j++;
+        while (j + 1 < n && values[order[j + 1]] == values[order[i]]) {
+            j++;
+        }
         // positions i..j (0-based) are tied -> average 1-based rank
         double average_rank = ((double) (i + j) / 2.0) + 1.0;
-        for (int32_t k = i; k <= j; k++) ranks[order[k]] = average_rank;
+        for (int32_t k = i; k <= j; k++) {
+            ranks[order[k]] = average_rank;
+        }
         i = j + 1;
     }
 }
 
 double spearman_rank_correlation(const vector<double>& a, const vector<double>& b) {
     int32_t n = (int32_t) a.size();
-    if (n < 3 || (int32_t) b.size() != n) return NAN;
+    if (n < 3 || (int32_t) b.size() != n) {
+        return NAN;
+    }
 
     vector<double> rank_a;
     vector<double> rank_b;
@@ -168,12 +174,18 @@ double spearman_rank_correlation(const vector<double>& a, const vector<double>& 
     }
 
     // all values tied on one side -> rank vector is constant -> correlation undefined
-    if (var_a <= 0.0 || var_b <= 0.0) return NAN;
+    if (var_a <= 0.0 || var_b <= 0.0) {
+        return NAN;
+    }
 
     double correlation = cov / sqrt(var_a * var_b);
     // guard against fp drift pushing us microscopically outside [-1, 1]
-    if (correlation > 1.0) correlation = 1.0;
-    if (correlation < -1.0) correlation = -1.0;
+    if (correlation > 1.0) {
+        correlation = 1.0;
+    }
+    if (correlation < -1.0) {
+        correlation = -1.0;
+    }
     return correlation;
 }
 
@@ -184,7 +196,9 @@ double cross_sectional_rank_ic(
     num_cross_sections = 0;
 
     int32_t num_series = (int32_t) predictions.size();
-    if (num_stocks < 3 || num_series < num_stocks || (int32_t) expected.size() != num_series) return NAN;
+    if (num_stocks < 3 || num_series < num_stocks || (int32_t) expected.size() != num_series) {
+        return NAN;
+    }
     if (num_series % num_stocks != 0) {
         Log::warning(
             "Cross-sectional IC: %d validation series is not a multiple of the %d panel series; "
@@ -211,10 +225,16 @@ double cross_sectional_rank_ic(
                 break;
             }
             int32_t len = (int32_t) predictions[v][0].size();
-            if ((int32_t) expected[v][0].size() < len) len = (int32_t) expected[v][0].size();
-            if (time_length < 0 || len < time_length) time_length = len;
+            if ((int32_t) expected[v][0].size() < len) {
+                len = (int32_t) expected[v][0].size();
+            }
+            if (time_length < 0 || len < time_length) {
+                time_length = len;
+            }
         }
-        if (!usable || time_length <= 0) continue;
+        if (!usable || time_length <= 0) {
+            continue;
+        }
 
         for (int32_t t = 0; t < time_length; t++) {
             for (int32_t s = 0; s < num_stocks; s++) {
@@ -233,7 +253,9 @@ double cross_sectional_rank_ic(
         }
     }
 
-    if (num_cross_sections == 0) return NAN;
+    if (num_cross_sections == 0) {
+        return NAN;
+    }
     return ic_sum / (double) num_cross_sections;
 }
 
@@ -246,14 +268,18 @@ static double pooled_sd(const vector<vector<vector<double> > >& block) {
         for (int32_t o = 0; o < (int32_t) block[s].size(); o++) {
             for (int32_t t = 0; t < (int32_t) block[s][o].size(); t++) {
                 double v = block[s][o][t];
-                if (std::isnan(v) || std::isinf(v)) continue;
+                if (std::isnan(v) || std::isinf(v)) {
+                    continue;
+                }
                 sum += v;
                 n++;
             }
         }
     }
 
-    if (n < 2) return NAN;
+    if (n < 2) {
+        return NAN;
+    }
     double mean = sum / (double) n;
 
     double sq = 0.0;
@@ -261,7 +287,9 @@ static double pooled_sd(const vector<vector<vector<double> > >& block) {
         for (int32_t o = 0; o < (int32_t) block[s].size(); o++) {
             for (int32_t t = 0; t < (int32_t) block[s][o].size(); t++) {
                 double v = block[s][o][t];
-                if (std::isnan(v) || std::isinf(v)) continue;
+                if (std::isnan(v) || std::isinf(v)) {
+                    continue;
+                }
                 double d = v - mean;
                 sq += d * d;
             }
@@ -277,10 +305,14 @@ double prediction_sd_ratio(
     double target_sd = pooled_sd(expected);
     // No spread in the targets means no scale to compare against; report "no opinion" rather than
     // dividing by (almost) zero and rejecting everything.
-    if (std::isnan(target_sd) || target_sd <= 0.0) return NAN;
+    if (std::isnan(target_sd) || target_sd <= 0.0) {
+        return NAN;
+    }
 
     double predicted_sd = pooled_sd(predictions);
-    if (std::isnan(predicted_sd)) return INFINITY;  // all-NaN predictions are as broken as it gets
+    if (std::isnan(predicted_sd)) {
+        return INFINITY;  // all-NaN predictions are as broken as it gets
+    }
 
     return predicted_sd / target_sd;
 }
