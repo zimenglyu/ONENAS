@@ -168,6 +168,10 @@ OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_
 
     bool compare_with_naive = argument_exists(arguments, "--compare_with_naive");
 
+    // when set, every island's elite genomes also predict the test window each generation and
+    // are dumped to generation_<g>_elites.csv for offline ensembling
+    bool write_elite_predictions = argument_exists(arguments, "--write_elite_predictions");
+
     if (number_islands == 1) {
         inter_island_co_rate = 0.0;
         intra_island_co_rate = 0.30;
@@ -176,11 +180,10 @@ OneNasIslandSpeciationStrategy* generate_onenas_island_speciation_strategy_from_
     bool repeat_extinction = argument_exists(arguments, "--repeat_extinction");
 
     OneNasIslandSpeciationStrategy* island_strategy = new OneNasIslandSpeciationStrategy(
-        number_islands, generated_population_size, elite_population_size, mutation_rate, intra_island_co_rate
-        ,
-        inter_island_co_rate, seed_genome, island_ranking_method, repopulation_method,
-        repopulation_frequency, num_mutations, repopulation_mutations, islands_to_exterminate, repeat_extinction, output_directory,
-        control_size_method, compare_with_naive
+        number_islands, generated_population_size, elite_population_size, mutation_rate, intra_island_co_rate,
+        inter_island_co_rate, seed_genome, island_ranking_method, repopulation_method, repopulation_frequency,
+        num_mutations, repopulation_mutations, islands_to_exterminate, repeat_extinction, output_directory,
+        control_size_method, compare_with_naive, write_elite_predictions
     );
 
     return island_strategy;
@@ -296,10 +299,47 @@ void slice_online_time_series(
     time_series_sets->export_training_series(time_offset, inputs, outputs);
     // time_series_sets->export_test_series(time_offset, validation_inputs, validation_outputs);
 
+    if (argument_exists(arguments, "--pooled_panel")) {
+        // Pooled panel mode requires all input series (stocks) to be date-aligned with
+        // equal row counts so windows at the same index are contemporaneous.
+        for (int32_t n = 1; n < (int32_t) inputs.size(); n++) {
+            if (inputs[n][0].size() != inputs[0][0].size()) {
+                Log::fatal(
+                    "Pooled panel mode: all --training_filenames must have equal row counts, but series 0 has %d "
+                    "rows and series %d has %d rows (after time offset)\n",
+                    (int32_t) inputs[0][0].size(), n, (int32_t) inputs[n][0].size()
+                );
+                exit(1);
+            }
+        }
+        Log::info(
+            "Pooled panel mode: verified %d series with equal length %d\n", (int32_t) inputs.size(),
+            (int32_t) inputs[0][0].size()
+        );
+    }
+
     int32_t sequence_length = 0;
     if (get_argument(arguments, "--time_series_length", true, sequence_length)) {
-        Log::info("Slicing input training data with time sequence length: %d\n", sequence_length);
-        slice_input_data(inputs, outputs, sequence_length);
+        // Sliding window stride. Defaults to the sequence length, which reproduces the
+        // original non-overlapping slicing exactly. With --window_step s < L, consecutive
+        // windows overlap by (L - s) rows.
+        int32_t window_step = sequence_length;
+        get_argument(arguments, "--window_step", false, window_step);
+        if (window_step <= 0) {
+            Log::fatal("--window_step must be a positive integer, got %d\n", window_step);
+            exit(1);
+        }
+        if (window_step != sequence_length && !argument_exists(arguments, "--pooled_panel")) {
+            Log::warning(
+                "--window_step %d != --time_series_length %d without --pooled_panel: overlapping windows are only "
+                "leak-protected (end-row availability) in pooled panel mode\n",
+                window_step, sequence_length
+            );
+        }
+        Log::info(
+            "Slicing input training data with time sequence length: %d, window step: %d\n", sequence_length, window_step
+        );
+        slice_input_data(inputs, outputs, sequence_length, window_step);
     }
 
     Log::info("Generating time series data finished! \n");
@@ -332,8 +372,13 @@ void get_train_validation_data(
 }
 
 void slice_input_data(
-    vector<vector<vector<double> > >& inputs, vector<vector<vector<double> > >& outputs, int32_t sequence_length
+    vector<vector<vector<double> > >& inputs, vector<vector<vector<double> > >& outputs, int32_t sequence_length,
+    int32_t window_step
 ) {
+    // window_step == 0 (default) means non-overlapping windows: advance by the full sequence length.
+    if (window_step <= 0) {
+        window_step = sequence_length;
+    }
     vector<vector<vector<double> > > sliced_inputs;
     vector<vector<vector<double> > > sliced_outputs;
     for (int32_t n = 0; n < (int32_t) inputs.size(); n++) {
@@ -348,7 +393,7 @@ void slice_input_data(
             current_time_series_output = slice_time_series(current_row, sequence_length, num_outputs, outputs[n]);
             sliced_inputs.push_back(current_time_series_input);
             sliced_outputs.push_back(current_time_series_output);
-            current_row = current_row + sequence_length;
+            current_row = current_row + window_step;
         }
         Log::info("Before slicing, original time series %d has %d parameters, and %d length\n", n, num_inputs, num_row);
     }

@@ -13,6 +13,9 @@ target_link_libraries(evaluate_rnn examm_strategy exact_common exact_time_series
 # add_executable(evaluate_rnns_multi_offset evaluate_rnns_multi_offset.cxx)
 # target_link_libraries(evaluate_rnns_multi_offset examm_strategy exact_common exact_time_series exact_weights examm_nn  ${MPI_LIBRARIES} ${MPI_EXTRA} ${MYSQL_LIBRARIES} pthread)
 
+add_executable(pi_genome_server pi_genome_server.cxx)
+target_link_libraries(pi_genome_server examm_strategy onenas_strategy exact_time_series online_series exact_common exact_weights examm_nn ${MPI_LIBRARIES} ${MPI_EXTRA} ${MYSQL_LIBRARIES} ${TIFF_LIBRARIES} pthread)
+
 add_executable(rnn_statistics rnn_statistics.cxx)
 target_link_libraries(rnn_statistics examm_strategy exact_common exact_time_series exact_weights examm_nn  ${MPI_LIBRARIES} ${MPI_EXTRA} ${MYSQL_LIBRARIES} pthread)
 

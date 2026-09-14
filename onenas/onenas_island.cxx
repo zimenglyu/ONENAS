@@ -3,6 +3,7 @@ using std::sort;
 using std::lower_bound;
 using std::upper_bound;
 
+#include <cmath>
 #include <iomanip>
 using std::setw;
 
@@ -118,8 +119,6 @@ bool OneNasIsland::is_repopulating() {
     return status == OneNasIsland::REPOPULATING;
 }
 
-
-
 void OneNasIsland::copy_random_genome(uniform_real_distribution<double> &rng_0_1, minstd_rand0 &generator, RNN_Genome **genome) {
     // int32_t genome_position = size() * rng_0_1(generator);
     // *genome = genomes[genome_position]->copy();
@@ -154,7 +153,6 @@ void OneNasIsland::copy_two_random_genomes(uniform_real_distribution<double> &rn
 //         status = OneNasIsland::INITIALIZING;
 //     }
 // }
-
 
 //returns -1 for not inserted, otherwise the index it was inserted at
 //inserts a copy of the genome, caller of the function will need to delete their
@@ -256,26 +254,167 @@ void OneNasIsland::evaluate_elite_population(const vector< vector< vector<double
         RNN_Genome* g = elite_genomes[i];
         g->evaluate_online(validation_input, validation_output);
     }
-    elite_population->sort_population("MSE");
+
+    // The gate and the exploding-prediction guard are relative to the rest of the island, so they
+    // can only be resolved once every elite has been re-evaluated on this generation's data.
+    apply_selection_flags();
+
+    elite_population->sort_population("fitness");
     for (int32_t i = 0; i < elite_population_size; i++) {
-        Log::info("Island %d: elite genome %d fitness: %f\n", id, i, elite_genomes[i]->get_fitness());
+        RNN_Genome* g = elite_genomes[i];
+        if (SelectionConfig::ic_available()) {
+            Log::info(
+                "Island %d: elite genome %d fitness: %f (MSE %.8f, IC %.6f, IC EWMA %.6f, SD ratio %.3f%s%s)\n", id, i,
+                g->get_fitness(), g->get_best_validation_mse(), g->get_validation_ic(), g->get_ic_ewma(),
+                g->get_prediction_sd_ratio(), g->is_selection_gated() ? ", GATED" : "",
+                g->is_prediction_sd_rejected() ? ", UNFIT" : ""
+            );
+        } else {
+            Log::info(
+                "Island %d: elite genome %d fitness: %f%s\n", id, i, g->get_fitness(),
+                g->is_prediction_sd_rejected() ? " (UNFIT: exploding predictions)" : ""
+            );
+        }
     }
 }
 
+void OneNasIsland::apply_selection_flags() {
+    vector<RNN_Genome*> genomes = elite_population->get_genomes();
+    if (genomes.empty()) {
+        return;
+    }
+
+    resolve_prediction_sd_rejections(genomes);
+
+    if (!SelectionConfig::gates_by_mse()) {
+        // Not gating: make sure no stale flag survives a metric change or a promoted copy.
+        for (int32_t i = 0; i < (int32_t) genomes.size(); i++) {
+            if (genomes[i] != NULL) {
+                genomes[i]->set_selection_gated(false);
+            }
+        }
+        return;
+    }
+
+    double threshold = get_mse_gate_threshold();
+    int32_t gated = 0;
+    for (int32_t i = 0; i < (int32_t) genomes.size(); i++) {
+        if (genomes[i] == NULL) {
+            continue;
+        }
+        bool gate = genomes[i]->get_best_validation_mse() > threshold;
+        genomes[i]->set_selection_gated(gate);
+        if (gate) {
+            gated++;
+        }
+    }
+
+    if (gated > 0) {
+        Log::info(
+            "Island %d: IC gate (%.3fx best MSE = %.8f) made %d of %d elite genomes ineligible\n", id,
+            SelectionConfig::get_ic_gate_factor(), threshold, gated, (int32_t) genomes.size()
+        );
+    }
+}
+
+void OneNasIsland::resolve_prediction_sd_rejections(vector<RNN_Genome*>& genomes) {
+    if (!SelectionConfig::guards_prediction_sd()) {
+        return;
+    }
+
+    int32_t total = 0;
+    int32_t rejected = 0;
+    RNN_Genome* best_by_mse = NULL;
+    double best_mse = EXAMM_MAX_DOUBLE;
+
+    for (int32_t i = 0; i < (int32_t) genomes.size(); i++) {
+        RNN_Genome* g = genomes[i];
+        if (g == NULL) {
+            continue;
+        }
+        total++;
+        if (g->is_prediction_sd_rejected()) {
+            rejected++;
+        }
+
+        double mse = g->get_best_validation_mse();
+        if (!std::isnan(mse) && mse < best_mse) {
+            best_mse = mse;
+            best_by_mse = g;
+        }
+    }
+
+    if (total == 0) {
+        return;
+    }
+
+    if (rejected > 0 && rejected < total) {
+        Log::info("Island %d: exploding-prediction guard marked %d of %d elite genomes unfit\n", id, rejected, total);
+        return;
+    }
+
+    if (rejected == total && best_by_mse != NULL) {
+        Log::warning(
+            "Island %d: ALL %d elite genomes failed the exploding-prediction guard (prediction SD > %.3fx "
+            "target SD). Keeping genome %d (MSE %.8f, SD ratio %.3f) so the island is not wiped out; the "
+            "whole population is predicting far too wide a distribution\n",
+            id, total, SelectionConfig::get_max_pred_sd_ratio(), best_by_mse->get_generation_id(), best_mse,
+            best_by_mse->get_prediction_sd_ratio()
+        );
+        best_by_mse->set_prediction_sd_rejected(false);
+    }
+}
+
+double OneNasIsland::get_mse_gate_threshold() {
+    if (!SelectionConfig::gates_by_mse()) {
+        return EXAMM_MAX_DOUBLE;
+    }
+
+    vector<RNN_Genome*> genomes = elite_population->get_genomes();
+    double best_mse = EXAMM_MAX_DOUBLE;
+    for (int32_t i = 0; i < (int32_t) genomes.size(); i++) {
+        if (genomes[i] == NULL) {
+            continue;
+        }
+        double mse = genomes[i]->get_best_validation_mse();
+        if (!std::isnan(mse) && mse < best_mse) {
+            best_mse = mse;
+        }
+    }
+
+    if (best_mse >= EXAMM_MAX_DOUBLE) {
+        return EXAMM_MAX_DOUBLE;
+    }
+    return best_mse * SelectionConfig::get_ic_gate_factor();
+}
 
 void OneNasIsland::select_elite_population() {
     // vector<RNN_Genome*> elite_genomes = Elite_population->get_genomes();
     Log::info("Finalizing generation: Selecting elite population on island %d\n", id);
     vector<RNN_Genome*> trained_genomes = generated_population->get_genomes();
 
+    // Threshold from the elites that were just re-evaluated. Promoted genomes are flagged BEFORE
+    // insertion so that insert_genome()'s keep/discard comparison already sees the gated ordering.
+    double gate_threshold = get_mse_gate_threshold();
+
     for (int i = 0; i < (int32_t)trained_genomes.size(); i++) {
         RNN_Genome* genome_copy = trained_genomes[i]->copy();
         genome_copy->set_genome_type(ELITE);
+        genome_copy->set_selection_gated(
+            SelectionConfig::gates_by_mse() && genome_copy->get_best_validation_mse() > gate_threshold
+        );
         elite_population->insert_genome(genome_copy);
     }
 
     generated_population->erase_population();
 
+    // The promotions can move the island's best MSE and can change whether every genome in the
+    // island is currently rejected, so re-derive the flags over the merged population and re-sort.
+    // Both are no-ops under the default metric with the guard disabled.
+    if (SelectionConfig::gates_by_mse() || SelectionConfig::guards_prediction_sd()) {
+        apply_selection_flags();
+        elite_population->sort_population("fitness");
+    }
 }
 
 void OneNasIsland::write_prediction(string filename, const vector< vector< vector<double> > > &test_input, const vector< vector< vector<double> > > &test_output) {

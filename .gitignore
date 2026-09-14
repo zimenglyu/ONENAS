@@ -10,3 +10,65 @@ __pycache__/*
 *.pyc
 visualization/plots/*
 test_output/*
+# a missing newline had merged the line above with the one below, so
+# neither pattern matched anything
+scripts/pooled/econ/onenas_c7e_elites/
+# raw per-run prediction streams: hundreds of MB, regenerable on Anvil by
+# stitch_islands.sbatch and rsync.  Only the scored summaries
+# (results_econ/islands_curve10*.csv) are tracked.
+scripts/pooled/econ/islands_sweep/
+
+# raw tuning-span stitched streams: regenerable via stitch_tune.sbatch
+scripts/pooled/econ/tune_sweep/
+
+# local copy of the core7 panels (data, never committed)
+panels_core7/
+panels_core7.zip
+
+# Pi results pulled off the device (data, never committed)
+pi_results/
+
+# Run artifacts under the campaign directories: predictions, per-run metrics and
+# logs. Hundreds of MB, and every one regenerates from the job scripts in the
+# same tree. The scripts themselves (.sh/.sbatch/.py) and notes (.md) stay
+# tracked. To keep one deliberately: git add -f <path>
+scripts/pooled/econ/**/*.json
+scripts/pooled/econ/**/*.csv
+scripts/pooled/econ/**/*.log
+scripts/pooled/controls/**/*.json
+scripts/pooled/controls/**/*.csv
+scripts/pooled/controls/**/*.log
+scripts/pooled/baselines/**/*.json
+scripts/pooled/baselines/**/*.csv
+scripts/pooled/baselines/**/*.log
+scripts/pooled/diagnostic/**/*.json
+scripts/pooled/diagnostic/**/*.csv
+scripts/pooled/diagnostic/**/*.log
+
+# Manuscript: drafts, figures and notes live with the paper, not the codebase.
+paper/
+
+# Experiment trees and result-processing kept out of the codebase: the campaign
+# directories, the analysis notebooks and scripts that post-process runs, and
+# the working notes. The code, the Anvil job scripts, the Pi scripts and the
+# pipeline they call (prep_panel / score_ensemble / score_stream) stay tracked.
+scripts/pooled/econ/
+scripts/pooled/wwtp/
+scripts/pooled/baselines/
+scripts/pooled/controls/
+scripts/pooled/diagnostic/
+scripts/pooled/gen_dashboard.py
+scripts/pooled/score_ic.py
+scripts/pilot/
+HP_SCREEN.md
+PAPER_MAP.md
+PRIMARY.md
+PRIMARY_HOLDOUT.md
+
+# Campaign scripts and the scoring pipeline: kept with the campaign, not the code.
+# Only the two Pi job scripts are tracked.
+scripts/pooled/*
+!scripts/pooled/anvil/
+scripts/pooled/anvil/*
+!scripts/pooled/anvil/best_run_40isl_pi_global.sh
+!scripts/pooled/anvil/best_run_40isl_pi_islands.sh

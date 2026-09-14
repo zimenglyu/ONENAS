@@ -178,13 +178,20 @@ RNN_Genome* RNN_Genome::copy() {
 
     other->log_filename = log_filename;
 
-
-
     other->initial_parameters = initial_parameters;
 
     other->best_validation_mse = best_validation_mse;
     other->best_validation_mae = best_validation_mae;
     other->best_parameters = best_parameters;
+
+    // Carry the IC smoothing state: elites are promoted and re-inserted by copy, so resetting it
+    // here would silently restart the EWMA every generation and defeat the smoothing.
+    other->validation_ic = validation_ic;
+    other->ic_ewma = ic_ewma;
+    other->ic_ewma_initialized = ic_ewma_initialized;
+    other->selection_gated = selection_gated;
+    other->last_pred_sd_ratio = last_pred_sd_ratio;
+    other->prediction_sd_rejected = prediction_sd_rejected;
 
     other->input_parameter_names = input_parameter_names;
     other->output_parameter_names = output_parameter_names;
@@ -337,9 +344,6 @@ int32_t RNN_Genome::get_node_count(int32_t node_type) {
 
     return count;
 }
-
-
-
 
 vector<string> RNN_Genome::get_input_parameter_names() const {
     return input_parameter_names;
@@ -872,9 +876,90 @@ void RNN_Genome::set_generation_id(int32_t _generation_id) {
     generation_id = _generation_id;
 }
 
+#define SELECTION_GATE_PENALTY 1000.0
+// Strictly worse than the gate penalty: an exploding genome is a harder reject than a merely
+// high-MSE one, but it stays finite so that a population made entirely of rejects still has a
+// meaningful internal order (see OneNasIsland::apply_selection_flags).
+#define SELECTION_UNFIT_PENALTY 1000000.0
+
 double RNN_Genome::get_fitness() const {
-    return best_validation_mse;
-    // return best_validation_mae;
+    double base;
+    if (SelectionConfig::uses_ic()) {
+        base = ic_ewma_initialized ? -ic_ewma : EXAMM_MAX_DOUBLE;
+    } else {
+        base = best_validation_mse;
+    }
+
+    if (std::isnan(base) || base >= EXAMM_MAX_DOUBLE) {
+        return base;
+    }
+
+    if (prediction_sd_rejected) {
+        base += SELECTION_UNFIT_PENALTY;
+    }
+    if (selection_gated) {
+        base += SELECTION_GATE_PENALTY;
+    }
+
+    return base;
+}
+
+double RNN_Genome::get_validation_ic() const {
+    return validation_ic;
+}
+
+double RNN_Genome::get_ic_ewma() const {
+    return ic_ewma_initialized ? ic_ewma : NAN;
+}
+
+bool RNN_Genome::has_ic() const {
+    return ic_ewma_initialized;
+}
+
+void RNN_Genome::update_ic_ewma(double ic) {
+    validation_ic = ic;
+    if (std::isnan(ic)) {
+        return;
+    }
+
+    if (!ic_ewma_initialized) {
+        ic_ewma = ic;
+        ic_ewma_initialized = true;
+    } else {
+        double alpha = SelectionConfig::get_ic_ewma_alpha();
+        ic_ewma = alpha * ic + (1.0 - alpha) * ic_ewma;
+    }
+}
+
+bool RNN_Genome::is_selection_gated() const {
+    return selection_gated;
+}
+
+void RNN_Genome::set_selection_gated(bool gated) {
+    selection_gated = gated;
+}
+
+double RNN_Genome::get_prediction_sd_ratio() const {
+    return last_pred_sd_ratio;
+}
+
+bool RNN_Genome::is_prediction_sd_rejected() const {
+    return prediction_sd_rejected;
+}
+
+void RNN_Genome::set_prediction_sd_rejected(bool rejected) {
+    prediction_sd_rejected = rejected;
+}
+
+void RNN_Genome::mark_unevaluated() {
+    best_validation_mse = EXAMM_MAX_DOUBLE;
+    best_validation_mae = EXAMM_MAX_DOUBLE;
+    validation_ic = NAN;
+    ic_ewma = 0.0;
+    ic_ewma_initialized = false;
+    selection_gated = false;
+    last_pred_sd_ratio = NAN;
+    prediction_sd_rejected = false;
 }
 
 double RNN_Genome::get_best_validation_mse() const {
@@ -884,8 +969,6 @@ double RNN_Genome::get_best_validation_mse() const {
 double RNN_Genome::get_best_validation_mae() const {
     return best_validation_mae;
 }
-
-
 
 bool RNN_Genome::sanity_check() {
     return true;
@@ -1352,13 +1435,57 @@ void RNN_Genome::write_predictions(
 // }
 
 void RNN_Genome::evaluate_online(const vector< vector< vector<double> > > &inputs, const vector< vector< vector<double> > > &output) {
+    const vector<double>& parameters = best_parameters.size() > 0 ? best_parameters : initial_parameters;
 
-    if (best_parameters.size() > 0) {
-        best_validation_mse = get_mse(best_parameters, inputs, output);
+    // MSE is computed and recorded in every mode, whatever the selection metric is.
+    best_validation_mse = get_mse(parameters, inputs, output);
+
+    if (!SelectionConfig::needs_predictions()) {
+        return;
+    }
+
+    // A second pass is needed because get_mse() only returns the aggregate error; the IC needs the
+    // individual predictions so they can be ranked across the panel at each timestep, and the
+    // exploding-prediction guard needs their spread.
+    vector<vector<vector<double> > > predictions = get_predictions(parameters, inputs, output);
+
+    if (SelectionConfig::guards_prediction_sd()) {
+        last_pred_sd_ratio = prediction_sd_ratio(predictions, output);
+        // NAN means the targets had no spread, so there is no scale to judge against: leave the
+        // genome alone rather than rejecting on a meaningless comparison.
+        bool reject = !std::isnan(last_pred_sd_ratio) && last_pred_sd_ratio > SelectionConfig::get_max_pred_sd_ratio();
+        if (reject && !prediction_sd_rejected) {
+            Log::info(
+                "Genome %d rejected by the exploding-prediction guard: prediction SD is %.3fx the "
+                "target SD (limit %.3fx), validation MSE %.8lf\n",
+                generation_id, last_pred_sd_ratio, SelectionConfig::get_max_pred_sd_ratio(), best_validation_mse
+            );
+        }
+        // Re-derived every evaluation rather than latched, so a genome that stops exploding on a
+        // later validation window becomes selectable again.
+        prediction_sd_rejected = reject;
+    }
+
+    if (!SelectionConfig::ic_available()) {
+        return;
+    }
+
+    int32_t num_cross_sections = 0;
+    double ic = cross_sectional_rank_ic(predictions, output, SelectionConfig::get_num_stocks(), num_cross_sections);
+    update_ic_ewma(ic);
+
+    if (std::isnan(ic)) {
+        Log::debug(
+            "Genome %d: cross-sectional IC undefined on this validation set (%d usable cross-sections)\n",
+            generation_id, num_cross_sections
+        );
     } else {
-        // Log::error("initial parameter size %d\n", initial_parameters.size());
-        best_validation_mse = get_mse(initial_parameters, inputs, output);
-    }   
+        Log::info(
+            "Genome %d: validation MSE %.8lf, cross-sectional rank IC %.6lf over %d cross-sections, "
+            "IC EWMA %.6lf, prediction SD ratio %.3f\n",
+            generation_id, best_validation_mse, ic, num_cross_sections, ic_ewma, last_pred_sd_ratio
+        );
+    }
 }
 
 void RNN_Genome::set_genome_type(int32_t type) {
@@ -2163,7 +2290,6 @@ bool RNN_Genome::connect_new_input_node(
 
     output_sigma /= (enabled_count - 1);
     output_sigma = sqrt(output_sigma);
-
 
     int32_t max_outputs = fmax(1, 2.0 + normal_distribution.random(generator, avg_outputs, output_sigma));
     while (possible_outputs.size() > max_outputs) {
@@ -3390,8 +3516,6 @@ void RNN_Genome::read_from_stream(istream& bin_istream) {
     // istringstream rng_0_1_iss(rng_0_1_str);
     // rng_0_1_iss >> rng_0_1;
 
-
-
     bin_istream.read((char*) &best_validation_mse, sizeof(double));
     bin_istream.read((char*) &best_validation_mae, sizeof(double));
 
@@ -3532,6 +3656,14 @@ void RNN_Genome::read_from_stream(istream& bin_istream) {
         bin_istream.read((char*) &training_indices[i], sizeof(int32_t));
     }
 
+    if (bin_istream.good() && bin_istream.peek() != EOF) {
+        bin_istream.read((char*) &validation_ic, sizeof(double));
+        bin_istream.read((char*) &ic_ewma, sizeof(double));
+        bin_istream.read((char*) &ic_ewma_initialized, sizeof(bool));
+        bin_istream.read((char*) &last_pred_sd_ratio, sizeof(double));
+        bin_istream.read((char*) &prediction_sd_rejected, sizeof(bool));
+    }
+
     assign_reachability();
 }
 
@@ -3591,8 +3723,6 @@ void RNN_Genome::write_to_stream(ostream& bin_ostream) {
     rng_0_1_oss << rng_0_1;
     string rng_0_1_str = rng_0_1_oss.str();
     write_binary_string(bin_ostream, rng_0_1_str, "rng_0_1");
-
-
 
     bin_ostream.write((char*) &best_validation_mse, sizeof(double));
     bin_ostream.write((char*) &best_validation_mae, sizeof(double));
@@ -3687,6 +3817,14 @@ void RNN_Genome::write_to_stream(ostream& bin_ostream) {
     for (int32_t i = 0; i < training_indices_size; i++) {
         bin_ostream.write((char*) &training_indices[i], sizeof(int32_t));
     }
+
+    // Cross-sectional IC selection state, appended last so that older readers / older .bin files
+    // stay compatible (see the matching guarded read in read_from_stream).
+    bin_ostream.write((char*) &validation_ic, sizeof(double));
+    bin_ostream.write((char*) &ic_ewma, sizeof(double));
+    bin_ostream.write((char*) &ic_ewma_initialized, sizeof(bool));
+    bin_ostream.write((char*) &last_pred_sd_ratio, sizeof(double));
+    bin_ostream.write((char*) &prediction_sd_rejected, sizeof(bool));
 }
 
 void RNN_Genome::update_innovation_counts(int32_t& node_innovation_count, int32_t& edge_innovation_count) {
