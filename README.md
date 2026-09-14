@@ -13,6 +13,12 @@ Implemented in C++ and built on the same foundation as EXAMM, ONE-NAS is designe
        alt="ONE-NAS architecture: workers train offspring in parallel while the main process evolves island elite populations through crossover and mutation, evaluates them with the fitness function, and selects a global best genome for online prediction.">
 </p>
 
+# Paper Under Review
+
+This repository contains the code for **"Evolve on the Host, Predict on the Edge: Deploying Online Neuroevolutionary Architecture Search for Cross-sectional Stock Return Prediction,"** under review at IAAI-27.
+
+The work evolves architectures on an HPC cluster while streaming each generation's champion genomes to a Raspberry Pi, which runs them on that generation's test window and measures inference time, power and energy on the device.
+
 # Selected Publications
 
 1. Zimeng Lyu, Alexander Ororbia, Travis Desell. **"Online Evolutionary Neural Architecture Search for Multivariate Non-Stationary Time Series Forecasting,"** Applied Soft Computing, 2023. (IF: 8.7)
