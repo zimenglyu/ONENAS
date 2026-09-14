@@ -64,3 +64,11 @@ HP_SCREEN.md
 PAPER_MAP.md
 PRIMARY.md
 PRIMARY_HOLDOUT.md
+
+# Campaign scripts and the scoring pipeline: kept with the campaign, not the code.
+# Only the two Pi job scripts are tracked.
+scripts/pooled/*
+!scripts/pooled/anvil/
+scripts/pooled/anvil/*
+!scripts/pooled/anvil/best_run_40isl_pi_global.sh
+!scripts/pooled/anvil/best_run_40isl_pi_islands.sh
