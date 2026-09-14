@@ -59,7 +59,7 @@ ONENAS can be run in two different modes - MPI (distributed) or multithreaded. F
 sh scripts/one-nas/coal_mpi.sh
 ```
 
-# Evolving on a Cluster, Predicting on a Raspberry Pi
+# Edge Deployment and On-Device Inference
 
 ONE-NAS can hand each generation's best networks to a Raspberry Pi and measure what they
 actually cost to run on an edge device. The search stays on the cluster; only the finished
